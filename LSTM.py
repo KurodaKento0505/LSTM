@@ -43,7 +43,7 @@ def main():
     file_length = count_file(dir)
 
     # sequenceの長さ
-    sequence_length(dir, file_length)
+    # sequence_length(dir, file_length)
 
     # sequenceのnumpyを作成
     sequence_np = np.zeros([file_length,data_length,3])
@@ -51,8 +51,6 @@ def main():
     # labelのnumpyを作成
     label_np = np.zeros([file_length])
 
-    # ランダムに取り出す
-    # random_k = rand_ints_nodup(1, file_length, file_length)
 
     for i in range(file_length):
 
@@ -62,6 +60,7 @@ def main():
         # ラベルに応じてtrain_tにラベル付与
         if df.at[0,"label"] == 1:
             label_np[i] = 1
+
         elif df.at[0,"label"] == 2:
             label_np[i] = 2
 
@@ -90,7 +89,6 @@ def main():
 
 
 
-
     # numpy load
     sequence_np = np.load('c:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\only_ball\\sequence_label_np\\sequence_np_' + str(data_length) + '.npy')
     label_np = np.load('c:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\only_ball\\sequence_label_np\\label_np_' + str(data_length) + '.npy')
@@ -109,16 +107,30 @@ def LSTM(train_x,train_t):
     train_x = torch.from_numpy(train_x.astype(np.float32)).clone()
     train_t = torch.from_numpy(train_t.astype(np.int32)).clone()
 
+    '''# ラベル数確認
+    a0 = 0
+    a1 = 0
+    a2 = 0
+    for i in range(len(train_t)):
+        if train_t[i] == 0:
+            a0 += 1
+        elif train_t[i] == 1:
+            a1 += 1
+        elif train_t[i] == 2:
+            a2 += 1
+    
+    print('0:',a0,'1:',a1,'2:',a2)'''
 
     dataset = torch.utils.data.TensorDataset(train_x, train_t)
 
 
     # trainとvalidationをsplit
-    n_samples = len(dataset)
     train_size = int(len(dataset) * 0.6) # train_size is 4800
     val_size = int(len(dataset) * 0.2) # val_size is 1600
-    test_size = n_samples - train_size - val_size# val_size is 1600
-    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(42))
+    test_size = int(len(dataset) * 0.2)# val_size is 1600
+
+    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(3)) # 42
+    # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size], torch.Generator().manual_seed(6)) # 42  # 3つに分類 → 2つに分類
 
 
 
@@ -139,10 +151,10 @@ def LSTM(train_x,train_t):
 
     train(model, epoch, trainloader)
 
-    PATH = './cifar_net.pth'
+    '''PATH = './cifar_net.pth'
     torch.save(model.state_dict(), PATH)
 
-    model.load_state_dict(torch.load(PATH))
+    model.load_state_dict(torch.load(PATH))'''
 
     # val_accuracy = evaluate(model, valloader)
     test_accuracy = evaluate(model, testloader)
@@ -184,7 +196,7 @@ def train(model, n_epochs, trainloader):
         for i, data in enumerate(trainloader, 0):
             inputs, labels = data
 
-            inputs,labels = inputs.to(device), labels.to(device)
+            inputs, labels = inputs.to(device), labels.to(device)
 
             labels = labels.long()
 
@@ -211,14 +223,21 @@ def evaluate(model, loader):
     model.eval()
     correct = 0
     total = 0
+    predicted = []
+    labels = []
     with torch.no_grad():
         for i, data in enumerate(loader):
-            inputs, labels = data
-            inputs,labels = inputs.to(device), labels.to(device)
+            inputs, labels_i = data
+            inputs,labels_i = inputs.to(device), labels_i.to(device)
             outputs = model(inputs)
-            _, predicted = torch.max(outputs, 1) 
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            _, predicted_i = torch.max(outputs, 1) 
+            print(labels_i.size(0))
+            total += labels_i.size(0)
+            correct += (predicted_i == labels_i).sum().item()
+            predicted.append(predicted_i)
+            labels.append(labels_i)
+        predicted = torch.cat(predicted)
+        labels = torch.cat(labels)
         print(predicted, labels)
         calculate(predicted,labels)
     accuracy = correct / total
@@ -245,7 +264,7 @@ def label(labels,competition_name):
     # ラベル付与
     i = 0
     for i in range(count_file(labels,competition_name)):
-        if i >= 1000:
+        if i >= 2000:
             break
         df = pd.read_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\only_ball\\" + str(labels) + "\\" + str(competition_name) + "\\" + str(i + 1).zfill(6) + ".csv")
         if labels == "no_counter":
@@ -259,15 +278,15 @@ def label(labels,competition_name):
 
         # ファイル移動
         # 前のラベルが何個入ったか
-        s = i + 1000
-        df.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\only_ball\\long_short_same\\" + str(s + 1).zfill(6) + ".csv")
+        s = i + 6000
+        df.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\only_ball\\all\\" + str(s + 1).zfill(6) + ".csv")
         if i % 1000 == 0:
             print(i)
 
 
 
 # ディレクトリ内のファイル数調査
-def count_file(a):# labels,competition_name
+def count_file(a):# labels,competition_name  or  a
     # dir = "C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\only_ball\\" + str(labels) + "\\" + str(competition_name) 
     dir = a
     count_file = 0
@@ -348,15 +367,6 @@ def read_csv(file_path):
     csv_file.close()                        # csvファイルを閉じる。
     return date_list     # 作成した２つのリスト(date_list, temperature_listを返す。)
 
-
-# 重複なし
-def rand_ints_nodup(a, b, k):
-  ns = []
-  while len(ns) < k:
-    n = random.randint(a, b)
-    if not n in ns:
-      ns.append(n)
-  return ns
 
 
 
