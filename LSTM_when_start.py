@@ -20,10 +20,11 @@ import pandas as pd
 import os
 import random
 import numpy as np
+from func_heatmap import make_heatmap
 
-from func_make_graph import make_graph
+'''from func_make_graph import make_graph
 from func_make_vector import make_vector
-from LSTM_percent import count_player
+from LSTM_percent import count_player'''
 
 
 # what kind of data
@@ -53,7 +54,7 @@ def main():
     number_of_tactical_action = 4
 
     # test か否か
-    test = True
+    test = False
 
     # val か否か
     val = False
@@ -62,7 +63,7 @@ def main():
     make_graph = True
 
 
-    '''# train
+    # train
     if test != True:
         dir = "C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\sequence_choice_42000"
     # test
@@ -94,9 +95,15 @@ def main():
     
 
     for i in range(file_length):
-
+        
         df = pd.read_csv(dir + "\\" + str(i + 1).zfill(6) + ".csv")
 
+        # make_heatmap
+        make_heatmap(df, data_length)
+        break
+
+        # どうやってフィル数だけの rgb_image_sequence_np をまとめるか？？？？？？？？？？？？？？？
+        
         # make_vector
         # make_vector(df)
 
@@ -120,11 +127,11 @@ def main():
     # 転置
     # label_np = label_np.T
 
-    print(sequence_np)
-    print(label_np)
+    # print(sequence_np)
+    # print(label_np)
 
 
-    # numpy保存
+    '''# numpy保存
     # train
     if test != True:
         np.save('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\sequence_np\\' + data + '_sequence_np', sequence_np) # test_1_ 0_to_2_ 5000_
@@ -134,7 +141,7 @@ def main():
         np.save("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + "_label_np", label_np)'''
 
 
-    # numpy load
+    '''# numpy load
     # train
     if test != True:
         sequence_np = np.load('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\sequence_np\\' + data + '_sequence_np.npy') # \\test test_ vector_ include_possession_
@@ -151,7 +158,7 @@ def main():
             # random_test_data
             sequence_np = np.load('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\sequence_np\\' + data + '_sequence_np.npy') # \\test test_ vector_ include_possession_
             label_np = np.load('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\label_np\\' + data + '_label_np.npy') # discrete_
-
+'''
 
 
     '''# ラベルごとに分割
@@ -185,7 +192,7 @@ def main():
     print(only_defense, only_no_counter, defense_or_no_counter, longcounter, shortcounter)
     print(only_defense + only_no_counter + defense_or_no_counter + longcounter + shortcounter)'''
 
-    LSTM(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val)
+    #LSTM(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val)
 
 
 

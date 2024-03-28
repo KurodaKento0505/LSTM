@@ -14,9 +14,6 @@ from func_possession import seg_possession
 from func_convert import convert_team
 from func_convert import convert_left_to_right
 from func_convert import convert_ball_left_to_right
-from socceraction_dev_no_360 import time_reset
-from socceraction_dev_no_360 import normalization
-from socceraction_dev_360 import arrange_360_data
 
 # Set up the StatsBomb data loader
 SBL = StatsBombLoader()
@@ -561,6 +558,165 @@ def counter_length(df_actions_half):
                     end_counter = j
                     break
 
+
+# データの正規化
+def normalization(df):
+    df.loc[:,['start_x']] = df.loc[:,['start_x']] / 110
+    df.loc[:,['start_y']] = df.loc[:,['start_y']] / 70
+    df.loc[:,['time_reset']] = df.loc[:,['time_reset']] / 100
+
+    for i in range(len(df)):
+        for n in range(1, 12):
+            if df.at[i, 'teammate_' + str(n) + '_x'] == -1.0:
+                pass
+            else:
+                df.at[i, 'teammate_' + str(n) + '_x'] = df.at[i, 'teammate_' + str(n) + '_x'] / 110
+                df.at[i, 'teammate_' + str(n) + '_y'] = df.at[i, 'teammate_' + str(n) + '_y'] / 70
+
+            if df.at[i, 'opponent_' + str(n) + '_x'] == -1.0:
+                pass
+            else:
+                df.at[i, 'opponent_' + str(n) + '_x'] = df.at[i, 'opponent_' + str(n) + '_x'] / 110
+                df.at[i, 'opponent_' + str(n) + '_y'] = df.at[i, 'opponent_' + str(n) + '_y'] / 70
+    return df
+
+
+# time_seconds を整形
+def time_reset(df):
+    i = 0
+    for i in range(len(df - 1)):
+        if i == 0:
+            first_time_seconds = float(df.loc[i, ['time_seconds']])
+            df.loc[i, ['time_reset']] = 0
+        else:
+            df.loc[i, ['time_reset']] = float(df.loc[i, ['time_seconds']]) - first_time_seconds
+    return df
+
+
+# 360_dataの整形
+def arrange_360_data(df, main_team_id):
+
+    three_sixty_data = df['360_data']
+
+    df['teammate_count'] = 0
+    df['opponent_count'] = 0
+
+    # 新しい列を作って0埋め
+    for i in range(1,12):
+        df['teammate_' + str(i) + '_x'] = -1.0
+        df['teammate_' + str(i) + '_y'] = -1.0
+        df['opponent_' + str(i) + '_x'] = -1.0
+        df['opponent_' + str(i) + '_y'] = -1.0
+
+
+    for i in range(len(three_sixty_data)):
+        
+        one_event_data = three_sixty_data[i]
+
+        # teammate_1 or opponent_1 の位置となるボール位置
+        ball_position_x = df.loc[i, ['start_x']].copy()
+        ball_position_y = df.loc[i, ['start_y']].copy()
+
+        # which team does have possession
+        # main team is attacking
+        if (df.loc[i, ['team_id']] == main_team_id).any().any():
+
+            # チームメート一人目はボール位置
+            df.loc[i, ['teammate_1_x']] = float(ball_position_x)
+            df.loc[i, ['teammate_1_y']] = float(ball_position_y)
+
+            # チームメート数
+            teammate_count = 1
+            # 相手チームメート数
+            opponent_count = 0
+            
+            # 映っている選手いるか
+            if three_sixty_data[i] == 0:
+                continue
+            else:
+
+                for j in range(len(one_event_data)):
+                    one_person_data = one_event_data[j]
+
+                    # 審判かどうか
+                    if one_person_data["actor"] == True:
+                        continue
+
+                    # keeper かどうか
+                    # keeper は11人目に入れる
+                    elif one_person_data["keeper"] == True:
+                        # チームメートかどうか
+                        if one_person_data["teammate"] == True:
+                            df.loc[i, ['teammate_11_x']] = one_person_data['location'][0]
+                            df.loc[i, ['teammate_11_y']] = one_person_data['location'][1]
+                        else:
+                            df.loc[i, ['opponent_11_x']] = one_person_data['location'][0]
+                            df.loc[i, ['opponent_11_y']] = one_person_data['location'][1]
+                    else:
+
+                        # チームメートかどうか
+                        if one_person_data["teammate"] == True:
+                            teammate_count += 1
+                            df.loc[i, ['teammate_' + str(teammate_count) + '_x']] = one_person_data['location'][0]
+                            df.loc[i, ['teammate_' + str(teammate_count) + '_y']] = one_person_data['location'][1]
+                        else:
+                            opponent_count += 1
+                            df.loc[i, ['opponent_' + str(opponent_count) + '_x']] = one_person_data['location'][0]
+                            df.loc[i, ['opponent_' + str(opponent_count) + '_y']] = one_person_data['location'][1]
+
+                df.loc[i, 'teammate_count'] = teammate_count
+                df.loc[i, 'opponent_count'] = opponent_count
+
+
+        # main team doesn't have possession(opponent team has possession)
+        else:
+
+            # 相手チーム一人目はボール位置
+            df.loc[i, ['opponent_1_x']] = float(ball_position_x)
+            df.loc[i, ['opponent_1_y']] = float(ball_position_y)
+
+            # チームメート数
+            teammate_count = 0
+            # 相手チームメート数
+            opponent_count = 1
+            
+            # 映っている選手いるか
+            if three_sixty_data[i] == 0:
+                continue
+            else:
+
+                for j in range(len(one_event_data)):
+                    one_person_data = one_event_data[j]
+
+                    # 審判かどうか
+                    if one_person_data["actor"] == True:
+                        continue
+
+                    # keeper かどうか
+                    # keeper は11人目に入れる
+                    elif one_person_data["keeper"] == True:
+                        # チームメートかどうか
+                        if one_person_data["teammate"] == True:
+                            df.loc[i, ['opponent_11_x']] = one_person_data['location'][0]
+                            df.loc[i, ['opponent_11_y']] = one_person_data['location'][1]
+                        else:
+                            df.loc[i, ['teammate_11_x']] = one_person_data['location'][0]
+                            df.loc[i, ['teammate_11_y']] = one_person_data['location'][1]
+                    
+                    # keeperじゃない
+                    else:
+                        # チームメートかどうか
+                        if one_person_data["teammate"] == True:
+                            opponent_count += 1
+                            df.loc[i, ['opponent_' + str(opponent_count) + '_x']] = one_person_data['location'][0]
+                            df.loc[i, ['opponent_' + str(opponent_count) + '_y']] = one_person_data['location'][1]
+                        else:
+                            teammate_count += 1
+                            df.loc[i, ['teammate_' + str(teammate_count) + '_x']] = one_person_data['location'][0]
+                            df.loc[i, ['teammate_' + str(teammate_count) + '_y']] = one_person_data['location'][1]
+
+                df.loc[i, 'teammate_count'] = teammate_count
+                df.loc[i, 'opponent_count'] = opponent_count
 
 
 # それぞれのシーケンスをto_csv
