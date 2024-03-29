@@ -28,7 +28,7 @@ from LSTM_percent import count_player'''
 
 
 # what kind of data
-data = 'only_x_10_players' # only_x_3_players only_x_6_players only_x_10_players only_x_no_player both_xy_no_player 
+data = 'heatmap' # only_x_3_players only_x_6_players only_x_10_players only_x_no_player both_xy_no_player 
 
 competition = "FIFA_World_Cup_2022" # FIFA_World_Cup_2022, UEFA_Euro_2020, UEFA_Women's_Euro_2022, Women's_World_Cup_2023, _convert
 print(competition)
@@ -76,6 +76,10 @@ def main():
     # ファイルの長さ
     file_length = count_file(dir)
 
+    # 格子のサイズ
+    grid_size_x = 121  # x座標の最大値 + 1
+    grid_size_y = 81   # y座標の最大値 + 1
+
     # only defense と only no counter を除く
     # sequence_choice(dir, file_length)
 
@@ -84,8 +88,13 @@ def main():
 
     # sequenceのnumpyを作成
     # （ボール + 選手22人）x 2 + 時間 + ラベル = 44
-    sequence_np = np.full([file_length, data_length, number_of_player * 1 + 2], 0.0) # ベクトルの時は、data_length - 1  # only_x の時は * 1 + 2
-
+    # sequence_np = np.full([file_length, data_length, number_of_player * 1 + 2], 0.0) # ベクトルの時は、data_length - 1  # only_x の時は * 1 + 2
+    # 画像の場合
+    # RGB
+    # sequence_np = np.zeros([file_length, data_length, grid_size_x, grid_size_y, 3])
+    # sequence_np = np.empty((data_length, grid_size_x, grid_size_y, 3), float)
+    # gray
+    sequence_np = np.empty((file_length, data_length, grid_size_y, grid_size_x), float)
     # labelのnumpyを作成
     label_np = np.full([file_length, number_of_tactical_action], 0.0) # 離散値の場合：１，連続値の場合：0.0
 
@@ -99,19 +108,18 @@ def main():
         df = pd.read_csv(dir + "\\" + str(i + 1).zfill(6) + ".csv")
 
         # make_heatmap
-        make_heatmap(df, data_length)
-        break
-
-        # どうやってフィル数だけの rgb_image_sequence_np をまとめるか？？？？？？？？？？？？？？？
+        image_sequence_np = make_heatmap(df, data_length, grid_size_x, grid_size_y)
+        sequence_np[i] = image_sequence_np
+        # sequence_np = np.append(image_sequence_np, sequence_np, axis=0)
         
         # make_vector
         # make_vector(df)
 
         # until counter をlabel_npに格納
-        put_in_label(df, label_np, i)
+        # put_in_label(df, label_np, i)
 
         # put in segmentstion data from df to sequence_np
-        put_in_seg_data(df, sequence_np, i, number_of_player)
+        # put_in_seg_data(df, sequence_np, i, number_of_player)
         
         # put in attack_sequence data from df to sequence_np
         # put_in_360_data(df, sequence_np, data_length, i)
@@ -131,14 +139,14 @@ def main():
     # print(label_np)
 
 
-    '''# numpy保存
+    # numpy保存
     # train
     if test != True:
         np.save('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\sequence_np\\' + data + '_sequence_np', sequence_np) # test_1_ 0_to_2_ 5000_
-        np.save('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\label_np\\' + data + '_label_np', label_np)
+        # np.save('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\label_np\\' + data + '_label_np', label_np)
     else:
         np.save("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + "_sequence_np", sequence_np) # test_1_ 0_to_2_ 5000_
-        np.save("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + "_label_np", label_np)'''
+        np.save("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + "_label_np", label_np)
 
 
     '''# numpy load
