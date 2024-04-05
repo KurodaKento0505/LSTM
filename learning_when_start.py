@@ -19,8 +19,12 @@ import csv
 import pandas as pd
 import os
 import random
+import cv2
 import numpy as np
 from func_heatmap import make_heatmap
+from LSTM import LSTM
+from CNN import CNN
+from LSTM import transform
 
 '''from func_make_graph import make_graph
 from func_make_vector import make_vector
@@ -28,7 +32,7 @@ from LSTM_percent import count_player'''
 
 
 # what kind of data
-data = 'heatmap' # only_x_3_players only_x_6_players only_x_10_players only_x_no_player both_xy_no_player 
+data = 'gray_heatmap' # only_x_3_players only_x_6_players only_x_10_players only_x_no_player both_xy_no_player 
 
 competition = "FIFA_World_Cup_2022" # FIFA_World_Cup_2022, UEFA_Euro_2020, UEFA_Women's_Euro_2022, Women's_World_Cup_2023, _convert
 print(competition)
@@ -54,13 +58,13 @@ def main():
     number_of_tactical_action = 4
 
     # test か否か
-    test = False
+    test = True
 
     # val か否か
     val = False
 
     # make_graph か否か
-    make_graph = True
+    make_graph = False
 
 
     # train
@@ -69,24 +73,27 @@ def main():
     # test
     else:
         dir = "C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\test_sequence\\" + competition # _convert
-
-    # make graph
-    # make_graph(dir_graph)
     
     # ファイルの長さ
     file_length = count_file(dir)
 
     # 格子のサイズ
-    grid_size_x = 121  # x座標の最大値 + 1
-    grid_size_y = 81   # y座標の最大値 + 1
+    grid_size_x = 42  # x座標の最大値 + 1
+    grid_size_y = 28   # y座標の最大値 + 1
 
-    # only defense と only no counter を除く
-    # sequence_choice(dir, file_length)
+    # the number of channel
+    channnel = 1
 
-    # sequenceの長さ
-    # sequence_length(dir, file_length)
+    # データ変数の整理
+    data_variable_list = [0] * 5
+    data_variable_list[0] = file_length
+    data_variable_list[1] = data_length
+    data_variable_list[2] = grid_size_y
+    data_variable_list[3] = grid_size_x
+    data_variable_list[4] = channnel
 
-    # sequenceのnumpyを作成
+
+    '''# sequenceのnumpyを作成
     # （ボール + 選手22人）x 2 + 時間 + ラベル = 44
     # sequence_np = np.full([file_length, data_length, number_of_player * 1 + 2], 0.0) # ベクトルの時は、data_length - 1  # only_x の時は * 1 + 2
     # 画像の場合
@@ -94,7 +101,8 @@ def main():
     # sequence_np = np.zeros([file_length, data_length, grid_size_x, grid_size_y, 3])
     # sequence_np = np.empty((data_length, grid_size_x, grid_size_y, 3), float)
     # gray
-    sequence_np = np.empty((file_length, data_length, grid_size_y, grid_size_x), float)
+    sequence_np = np.empty((file_length, data_length, grid_size_y, grid_size_x), float) # rgbの場合，最後に３，グレーの場合，最後の3を削除
+
     # labelのnumpyを作成
     label_np = np.full([file_length, number_of_tactical_action], 0.0) # 離散値の場合：１，連続値の場合：0.0
 
@@ -102,15 +110,22 @@ def main():
     # count_player
     # count_player(dir, file_length)
     
+    # only defense と only no counter を除く
+    # sequence_choice(dir, file_length)
+
+    # sequenceの長さ
+    # sequence_length(dir, file_length)
+
+    # make graph
+    # make_graph(dir_graph)
 
     for i in range(file_length):
-        
+
         df = pd.read_csv(dir + "\\" + str(i + 1).zfill(6) + ".csv")
 
         # make_heatmap
         image_sequence_np = make_heatmap(df, data_length, grid_size_x, grid_size_y)
         sequence_np[i] = image_sequence_np
-        # sequence_np = np.append(image_sequence_np, sequence_np, axis=0)
         
         # make_vector
         # make_vector(df)
@@ -132,6 +147,8 @@ def main():
         if i % 1000 == 0:
             print(i)
     
+    sequence_np = transform(sequence_np, data_variable_list)
+
     # 転置
     # label_np = label_np.T
 
@@ -147,12 +164,12 @@ def main():
     else:
         np.save("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + "_sequence_np", sequence_np) # test_1_ 0_to_2_ 5000_
         np.save("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + "_label_np", label_np)
+'''
 
-
-    '''# numpy load
+    # numpy load
     # train
     if test != True:
-        sequence_np = np.load('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\sequence_np\\' + data + '_sequence_np.npy') # \\test test_ vector_ include_possession_
+        sequence_np = np.load('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\sequence_np\\' + data + '_array_0_sequence_np.npy') # \\test test_ vector_ include_possession_
         label_np = np.load('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\label_np\\' + data + '_label_np.npy') # discrete_
     
     # test
@@ -166,226 +183,17 @@ def main():
             # random_test_data
             sequence_np = np.load('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\sequence_np\\' + data + '_sequence_np.npy') # \\test test_ vector_ include_possession_
             label_np = np.load('C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\label_np\\' + data + '_label_np.npy') # discrete_
-'''
 
 
-    '''# ラベルごとに分割
-    # Timeありかなしかで 2 or 3
-    sequence_0_np = np.zeros([76098, data_length, number_of_player * 2 + 3], dtype = np.float16)
-    sequence_1_np = np.zeros([848, data_length, number_of_player * 2 + 3], dtype = np.float16)
-    sequence_2_np = np.zeros([1013, data_length, number_of_player * 2 + 3], dtype = np.float16)
-
-    label_0_np = np.zeros([76098])
-    label_1_np = np.zeros([848])
-    label_2_np = np.zeros([1013])'''
-
-    '''only_defense = 0 # 守備の数
-    longcounter = 0 # ロングカウンターの数
-    shortcounter = 0 # ショートカウンターの数
-    only_no_counter = 0
-    defense_or_no_counter = 0
-
-    for i in range(len(label_np)):
-        if label_np[i, 0] == 1:
-            only_defense += 1
-        elif label_np[i, 3] == 1:
-            only_no_counter += 1
-        elif label_np[i, 1] == 0 and label_np[i, 2] == 0:
-            defense_or_no_counter += 1
-        elif label_np[i, 1] != 0:
-            longcounter += 1
-        elif label_np[i, 2] != 0:
-            shortcounter += 1
-
-    print(only_defense, only_no_counter, defense_or_no_counter, longcounter, shortcounter)
-    print(only_defense + only_no_counter + defense_or_no_counter + longcounter + shortcounter)'''
-
-    #LSTM(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val)
-
-
-
-
-
-def LSTM(train_x, train_t, number_of_player, number_of_tactical_action, test, make_graph, val): 
-
-    # torch.tensorでtensor型に
-    train_x = torch.from_numpy(train_x.astype(np.float32)).clone()
-    train_t = torch.from_numpy(train_t.astype(np.float32)).clone()
-
-
-    batch_size = 512
-    hidden_dim = 20
-    epoch = 1000
-    lr = 0.1
+    print(sequence_np.shape, label_np.shape)
 
 
     if test != True:
-        dataset = torch.utils.data.TensorDataset(train_x, train_t)
-
-        train_size = int(len(dataset) * 0.6) # train_size is 3000
-        val_size = int(len(dataset) * 0.2) # val_size is 1000
-        test_size = int(len(dataset) * 0.2)# val_size is 1000
-        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(3)) # 42
-        
-        trainloader = torch.utils.data.DataLoader(train_dataset, batch_size, shuffle = True, num_workers = 0)
-        valloader = torch.utils.data.DataLoader(val_dataset, batch_size, shuffle = True, num_workers = 0)
-        testloader = torch.utils.data.DataLoader(test_dataset, batch_size, shuffle = True, num_workers = 0)
-
-
+        LSTM(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val, data_variable_list)
+        # CNN(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val)
     else:
-        if make_graph:
-            graph_test_dataset = torch.utils.data.TensorDataset(train_x, train_t)
-            graph_testloader = torch.utils.data.DataLoader(graph_test_dataset, batch_size, shuffle = False, num_workers = 0)
-
-        else:
-            dataset = torch.utils.data.TensorDataset(train_x, train_t)
-            train_size = int(len(dataset) * 0.6) # train_size is 3000
-            val_size = int(len(dataset) * 0.2) # val_size is 1000
-            test_size = int(len(dataset) * 0.2)# val_size is 1000
-            train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(3)) # 42
-            trainloader = torch.utils.data.DataLoader(train_dataset, batch_size, shuffle = True, num_workers = 0)
-            valloader = torch.utils.data.DataLoader(val_dataset, batch_size, shuffle = True, num_workers = 0)
-            testloader = torch.utils.data.DataLoader(test_dataset, batch_size, shuffle = True, num_workers = 0)
-
-
-    # 時間を入れるか入れないか input_dim=3 or 2
-    # only_x : * 1 + 2, x + y : * 2 + 3
-    model = LSTMClassification(input_dim = number_of_player * 1 + 2, 
-                            hidden_dim = hidden_dim, 
-                            target_size = number_of_tactical_action)
-
-
-    PATH = './cifar_net.pth'
-
-    if test != True:
-        train(model, epoch, trainloader, valloader, lr)
-        torch.save(model.state_dict(), PATH)
-        # evaluate(model, testloader, test)
-
-    else:
-        model.load_state_dict(torch.load(PATH))
-
-        if make_graph:
-            evaluate(model, graph_testloader, test, number_of_tactical_action, make_graph, val)
-        else:
-            if val:
-                evaluate(model, valloader, test, number_of_tactical_action, make_graph, val)
-            else:
-                evaluate(model, testloader, test, number_of_tactical_action, make_graph, val)
-
-
-    # val_accuracy = evaluate(model, valloader)
-    # test_accuracy = evaluate(model, testloader)
-    # print("Test Accuracy: {:.2f}%".format(val_accuracy * 100))
-    # print("Test Accuracy: {:.2f}%".format(test_accuracy * 100))
-
-
-
-# モデル
-class LSTMClassification(nn.Module):
-
-        def __init__(self, input_dim, hidden_dim, target_size):
-            super(LSTMClassification, self).__init__()
-            self.lstm = nn.LSTM(input_dim, hidden_dim, batch_first=True)
-            self.fc = nn.Linear(hidden_dim, target_size)
-
-        # 実際に動かす
-        def forward(self, input_):
-            lstm_out, (h, c) = self.lstm(input_)
-            logits = self.fc(lstm_out[:,-1])
-            scores = logits
-            # scores = torch.sigmoid(logits)
-            # print(np.shape(scores))
-            return scores
-        
-
-
-
-def train(model, n_epochs, trainloader, valloader, lr):
-    model = model.to(device)
-    loss_function = nn.HuberLoss() # SmoothL1
-    optimizer = optim.SGD(model.parameters(), lr=lr)
-
-    history = {
-        'loss': []
-    }
-    for epoch in range(n_epochs):
-        model.train()
-        train_losses = []
-        val_losses = []
-
-        for i, data in enumerate(trainloader, 0):
-            inputs, labels = data
-
-            inputs, labels = inputs.to(device), labels.to(device)
-
-            labels = labels.long()
-
-            model.zero_grad()
-
-            tag_scores = model(inputs)
-
-            # labels = labels.unsqueeze(1)
-            
-            train_loss = loss_function(tag_scores, labels.float())
-            
-            train_loss.backward()
-            optimizer.step()
-            train_losses.append(float(train_loss))
-
-        model.eval()
-        with torch.no_grad():
-            for i, data in enumerate(valloader, 0):
-                inputs, labels = data
-                inputs, labels = inputs.to(device), labels.to(device)
-                labels = labels.long()
-                model.zero_grad()
-                tag_scores = model(inputs)
-                val_loss = loss_function(tag_scores, labels.float())
-                val_losses.append(float(val_loss))
-
-        avg_train_loss = np.mean(train_losses)
-        history['loss'].append(avg_train_loss)
-        print("Epoch {} / {}: train_Loss = {:.3f}".format(epoch+1, n_epochs, avg_train_loss))
-
-        avg_val_loss = np.mean(val_losses)
-        history['loss'].append(avg_val_loss)
-        print("Epoch {} / {}: val_Loss = {:.3f}".format(epoch+1, n_epochs, avg_val_loss))
-
-    return history
-
-
-
-def evaluate(model, loader, test, number_of_tactical_action, make_graph, val):
-    model = model.to(device)
-    model.eval()
-
-    # total = 0
-
-    outputs_list = []
-    labels_list = []
-
-    with torch.no_grad():
-        for i, data in enumerate(loader):
-            inputs, labels_i = data
-            inputs,labels_i = inputs.to(device), labels_i.to(device)
-            labels_i_list = labels_i.tolist()
-
-            outputs_i = model(inputs)
-            # outputs_i = F.softmax(outputs_i, dim = 1)
-            outputs_i_list = outputs_i.tolist()
-
-            for j in range(len(outputs_i)):
-                outputs_list.append(outputs_i_list[j])
-
-            for j in range(len(labels_i)):
-                labels_list.append(labels_i_list[j])
-
-            # total += labels_i.size(0)
-
-        percent_calculate(outputs_list, labels_list, len(loader), test, number_of_tactical_action, make_graph, val)
-    # accuracy = correct / total
-    # return accuracy
+        outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val, data_variable_list)
+        percent_calculate(outputs_list, labels_list, len_loader, test, number_of_tactical_action, make_graph, val)
 
 
 
@@ -406,10 +214,10 @@ def percent_calculate(outputs, labels, length, test, number_of_tactical_action, 
         # threhold を格納
         threshold = np.zeros(number_of_tactical_action) # 0 人
 
-        threshold[0] = 0.8111589377624764
-        threshold[1] = 0.6870384882520266
-        threshold[2] = 0.5289033916825636
-        threshold[3] = 0.023588469646860406
+        threshold[0] = 0.8609294521083235
+        threshold[1] = 0.7634105252309301
+        threshold[2] = 0.8239291413766827
+        threshold[3] = 0.999918004759826
 
         if make_graph:
             # make_graph
@@ -627,6 +435,60 @@ def percent_calculate(outputs, labels, length, test, number_of_tactical_action, 
 
 
 
+# 閾値付きのrecall
+def recall(y_test, y_prob, threshold):
+
+    y_pred = np.zeros(len(y_prob))
+    
+    for i in range(len(y_prob)):
+        if y_prob[i] >= threshold:
+            y_pred[i] = 1
+
+        if y_test[i] != 0 and y_test[i] != 1:
+            y_test[i] = 0
+
+    # score = recall_score(y_test.astype(int), y_pred.astype(int), pos_label = 0)
+    # score = accuracy_score(y_test.astype(int), y_pred.astype(int))
+    # score = precision_score(y_test.astype(int), y_pred.astype(int), pos_label = 0)
+    score = f1_score(y_test.astype(int), y_pred.astype(int), pos_label = 0)
+
+    return score
+
+
+# 目的関数
+# longcounter
+def objective_longcounter_variable_degree(longcounter_label_0_or_1_np, longcounter_output_0_or_1_np):
+    def objective_longcounter(trial): 
+        threshold = trial.suggest_float('threshold', 0.0, 1.0) # 0~1.0で探索
+        ret = recall(longcounter_label_0_or_1_np, longcounter_output_0_or_1_np, threshold)
+        return ret
+    return objective_longcounter
+
+# shortcounter
+def objective_shortcounter_variable_degree(shortcounter_label_0_or_1_np, shortcounter_output_0_or_1_np):
+    def objective_shortcounter(trial): 
+        threshold = trial.suggest_float('threshold', 0.0, 1.0) # 0~1.0で探索
+        ret = recall(shortcounter_label_0_or_1_np, shortcounter_output_0_or_1_np, threshold)
+        return ret
+    return objective_shortcounter
+
+# opposition_half_possession
+def objective_opposition_half_possession_variable_degree(opposition_half_possession_label_0_or_1_np, opposition_half_possession_output_0_or_1_np):
+    def objective_opposition_half_possession(trial): 
+        threshold = trial.suggest_float('threshold', 0.0, 1.0) # 0~1.0で探索
+        ret = recall(opposition_half_possession_label_0_or_1_np, opposition_half_possession_output_0_or_1_np, threshold)
+        return ret
+    return objective_opposition_half_possession
+
+# own_half_possession
+def objective_own_half_possession_variable_degree(own_half_possession_label_0_or_1_np, own_half_possession_output_0_or_1_np):
+    def objective_own_half_possession(trial): 
+        threshold = trial.suggest_float('threshold', 0.0, 1.0) # 0~1.0で探索
+        ret = recall(own_half_possession_label_0_or_1_np, own_half_possession_output_0_or_1_np, threshold)
+        return ret
+    return objective_own_half_possession
+
+
 
 # データにラベルをつける ＆ 同じファイルに番号変えて移動
 def label(labels,competition_name):
@@ -783,59 +645,6 @@ def put_in_label(df, label_np, i): # 0 ~ 2 の時は + 1
     elif (df.at[5, 'label'] == 4).any().any():
         label_np[i, 3] = 0'''
 
-
-# 閾値付きのrecall
-def recall(y_test, y_prob, threshold):
-
-    y_pred = np.zeros(len(y_prob))
-    
-    for i in range(len(y_prob)):
-        if y_prob[i] >= threshold:
-            y_pred[i] = 1
-
-        if y_test[i] != 0 and y_test[i] != 1:
-            y_test[i] = 0
-
-    # score = recall_score(y_test.astype(int), y_pred.astype(int), pos_label = 0)
-    # score = accuracy_score(y_test.astype(int), y_pred.astype(int))
-    # score = precision_score(y_test.astype(int), y_pred.astype(int), pos_label = 0)
-    score = f1_score(y_test.astype(int), y_pred.astype(int), pos_label = 0)
-
-    return score
-
-
-# 目的関数
-# longcounter
-def objective_longcounter_variable_degree(longcounter_label_0_or_1_np, longcounter_output_0_or_1_np):
-    def objective_longcounter(trial): 
-        threshold = trial.suggest_float('threshold', 0.0, 1.0) # 0~1.0で探索
-        ret = recall(longcounter_label_0_or_1_np, longcounter_output_0_or_1_np, threshold)
-        return ret
-    return objective_longcounter
-
-# shortcounter
-def objective_shortcounter_variable_degree(shortcounter_label_0_or_1_np, shortcounter_output_0_or_1_np):
-    def objective_shortcounter(trial): 
-        threshold = trial.suggest_float('threshold', 0.0, 1.0) # 0~1.0で探索
-        ret = recall(shortcounter_label_0_or_1_np, shortcounter_output_0_or_1_np, threshold)
-        return ret
-    return objective_shortcounter
-
-# opposition_half_possession
-def objective_opposition_half_possession_variable_degree(opposition_half_possession_label_0_or_1_np, opposition_half_possession_output_0_or_1_np):
-    def objective_opposition_half_possession(trial): 
-        threshold = trial.suggest_float('threshold', 0.0, 1.0) # 0~1.0で探索
-        ret = recall(opposition_half_possession_label_0_or_1_np, opposition_half_possession_output_0_or_1_np, threshold)
-        return ret
-    return objective_opposition_half_possession
-
-# own_half_possession
-def objective_own_half_possession_variable_degree(own_half_possession_label_0_or_1_np, own_half_possession_output_0_or_1_np):
-    def objective_own_half_possession(trial): 
-        threshold = trial.suggest_float('threshold', 0.0, 1.0) # 0~1.0で探索
-        ret = recall(own_half_possession_label_0_or_1_np, own_half_possession_output_0_or_1_np, threshold)
-        return ret
-    return objective_own_half_possession
 
 
 if __name__ == "__main__":
