@@ -1,6 +1,23 @@
 # 攻撃を全て左から右に変換するチーム名を知る関数
 def convert_team(df):
-    if df['end_x'].iloc[0] >= 52.5:
+
+    # keeper の位置によって変換するチームを決める
+    three_sixty_data = df['360_data']
+
+    for i in range(len(three_sixty_data)):
+        one_event_data = three_sixty_data[i]
+
+        for j in range(len(one_event_data)):
+            one_person_data = one_event_data[j]
+
+            if one_person_data["keeper"] == True:
+
+                # チームメートかどうか
+                if one_person_data["teammate"] == True:
+                    print(one_person_data['location'][0], one_person_data['location'][1])
+                    convert_team_id = df.loc[i, ['team_id']]
+
+    '''if df['end_x'].iloc[0] >= 52.5:
         convert_team_id = df['team_id'].iloc[0]
     else:
         i = 0
@@ -10,7 +27,8 @@ def convert_team(df):
             elif df['team_id'].iloc[i] != df['team_id'].iloc[i - 1]:
                 convert_team_id = df['team_id'].iloc[i - 1]
             else:
-                continue
+                continue'''
+    
     return convert_team_id
 
 
