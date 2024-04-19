@@ -1,9 +1,8 @@
-import pandas as pd
+import socceraction.spadl as spadl
 from socceraction.data.statsbomb import StatsBombLoader
 import math
 import numpy as np
-
-import socceraction.spadl as spadl
+import pandas as pd
 
 import matplotlib.pyplot as plt
 import matplotsoccer as mps
@@ -14,6 +13,7 @@ from func_possession import seg_possession
 from func_convert import convert_team
 from func_convert import convert_left_to_right
 from func_convert import convert_ball_left_to_right
+
 
 # Set up the StatsBomb data loader
 SBL = StatsBombLoader()
@@ -27,6 +27,7 @@ competition_name = "FIFA_World_Cup_2022" # FIFA_World_Cup_2022, UEFA_Euro_2020, 
 
 # Create a dataframe with all games from UEFA Euro
 df_games = SBL.games(competition_id, season_id).set_index("game_id")
+
 
 #######################################################################################ここ変える########################################################
 # 一つの大会におけるcount sequence
@@ -96,8 +97,17 @@ def main():
         df_actions = df_actions.sort_values(['period_id','time_seconds']) 
 
 
+        # データを選別、'360_data'、'possession'、'player_name'
+        df_actions = df_actions.loc[:,['period_id','time_seconds','team_id','start_x','start_y','end_x','end_y','type_name','play_pattern_name','result_name','team_name', '360_data']]
+
         # 前半 left to right するチームの id 
-        convert_team_id_1st_half = convert_team(df_actions)
+        team_id, team_id_convert = convert_team(df_actions)
+        print(team_id, team_id_convert)
+
+        if team_id_convert:
+            convert_team_id_1st_half = team_id
+        break
+        '''# convert_team_id_1st_half = convert_team(df_actions)
 
         # 後半 left to right するチームの id 
         if convert_team_id_1st_half == df_teams['team_id'].iloc[0]:
@@ -109,7 +119,7 @@ def main():
             main_team_id_1st_half = df_teams['team_id'].iloc[0]
             main_team_id_2nd_half = df_teams['team_id'].iloc[1]
 
-        print(main_team_id_1st_half,convert_team_id_1st_half,main_team_id_2nd_half,convert_team_id_2nd_half)
+        print(main_team_id_1st_half,convert_team_id_1st_half,main_team_id_2nd_half,convert_team_id_2nd_half)'''
 
 
         # データを選別、'360_data'、'possession'、'player_name'
@@ -145,7 +155,7 @@ def main():
 
         df_actions_1sthalf.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\"+ competition_name +"\\df_1st_half.csv")
         df_actions_2ndhalf.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\"+ competition_name +"\\df_2nd_half.csv")
-        break
+        
 
         if convert:
             arrange_360_data(df_actions_1sthalf, convert_team_id_1st_half)

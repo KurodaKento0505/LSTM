@@ -12,24 +12,41 @@ def convert_team(df):
 
             if one_person_data["keeper"] == True:
 
-                # チームメートかどうか
-                if one_person_data["teammate"] == True:
-                    print(one_person_data['location'][0], one_person_data['location'][1])
-                    convert_team_id = df.loc[i, ['team_id']]
+                # keeperを見つけた時のボール保持者のteam_idを記録
+                team_id = df.loc[i, ['team_id']]
+                print(team_id)
+                print(one_person_data['location'][0])
 
-    '''if df['end_x'].iloc[0] >= 52.5:
-        convert_team_id = df['team_id'].iloc[0]
-    else:
-        i = 0
-        for i in range(len(df)):
-            if i == 0:
-                continue
-            elif df['team_id'].iloc[i] != df['team_id'].iloc[i - 1]:
-                convert_team_id = df['team_id'].iloc[i - 1]
-            else:
-                continue'''
+                # team_id のチームの話
+                if one_person_data["teammate"] == True:
+                    print('teammate_keeper')
+                    if one_person_data['location'][0] < 60:
+                        convert = False
+                        print('< 60')
+                    else:
+                        convert = True
+                        print('>= 60')
+
+                # team_id と違うチームの話
+                else:
+                    print('opposite_keeper')
+                    if one_person_data['location'][0] < 60:
+                        convert = True
+                        print('< 60')
+                    else:
+                        convert = False
+                        print('>= 60')
+                
+                # break inner loop
+                break
+
+        else:
+            continue
+        
+        # break outer loop
+        break
     
-    return convert_team_id
+    return team_id, convert
 
 
 # 攻撃を全て左から右に変換するチームを変換する関数
