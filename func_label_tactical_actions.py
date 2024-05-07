@@ -11,22 +11,61 @@ def label_tactical_actions(df_in_play, main_team_id):
 
                 # longcounter
                 # ボール位置がディフェンシブサードにボールが存在
-                if df_in_play.loc[0,["start_x"]] <= 35:
+                if df_in_play.loc[i,["start_x"]] <= 35:
 
-                    # if time_secondsが15秒以内にアタッキングサードに行くか
-                    for j in range(len(df_in_play)):
-                        if (df_in_play.loc[j,["start_x"]] >= 70).any().any():
+                    # time_secondsが15秒以内にアタッキングサードに行くか
+                    # ボール奪取した時刻
+                    start_timeseconds = float(df_in_play.loc[i,["time_seconds"]])
 
-                            np_time_seconds = df_in_play["time_seconds"].to_numpy().tolist()
-                            end_timeseconds = np_time_seconds[j]
-                            start_timeseconds = np_time_seconds[0]
+                    for j in range(i + 1, len(df_in_play)):
+
+                        # 相手ボールになったら終わり
+                        if df_in_play.loc[j,["team_id"]] != main_team_id:
+                            break
+
+                        # アタッキングサードに侵入
+                        if df_in_play.loc[j,["start_x"]] >= 70:
+
+                            end_timeseconds = float(df_in_play.loc[j,["time_seconds"]])
                             time = end_timeseconds - start_timeseconds
+                            print(time, end_timeseconds, start_timeseconds)
+                            # np_time_seconds = df_in_play["time_seconds"].to_numpy().tolist()
+                            # end_timeseconds = np_time_seconds[j]
+                            # start_timeseconds = np_time_seconds[0]
+                            # time = end_timeseconds - start_timeseconds
                             
                             if time <= 15.0:
                                 df_in_play.loc[i : i + j, ['label']] = 1
                                 a = 1
 
-                # shortcounter
+                            break
+
+                '''# shortcounter
+                # ミドルサードもしくはアタッキングサード後方にボールが存在
+                elif (df_in_play.iloc[[0],:].loc[:,["start_x"]] >= 35).any().any() and (df_in_play.iloc[[0],:].loc[:,["start_x"]] <= 85).any().any():
+
+                    if (df_in_play.iloc[[0],:].loc[:,["start_x"]] >= 70).any().any():
+                        for i in (n+1 for n in range(len(df_in_play) - 1)):
+                            if (df_in_play.iloc[[i],:].loc[:,["start_x"]] > 85).any().any():
+                                # print(df.iloc[[i],:].loc[:,["start_x"]])
+                                # print(df.iloc[[i],:].loc[:,["start_x"]] > 70)
+
+                                np_time_seconds = df_in_play["time_seconds"].to_numpy().tolist()
+                                end_timeseconds = np_time_seconds[i]
+                                start_timeseconds = np_time_seconds[0]
+                                time = end_timeseconds - start_timeseconds
+                                
+                                if time <= 10.0:
+                                    # print(time)
+                                    a = 2
+                                    break
+
+                                else:
+                                    a = 0
+                                
+
+                            else:
+                                a = 0'''
 
 
     # counterpress(label = 6)
