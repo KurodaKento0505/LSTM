@@ -10,9 +10,14 @@ import matplotsoccer as mps
 from func_longcounter import seg_longcounter
 from func_shortcounter import seg_shortcounter
 from func_possession import seg_possession
+from func_counterpress import seg_counterpress
+from func_pressing import seg_pressing
+from func_label_tactical_actions import label_tactical_actions
+
 from func_convert import convert_team
 from func_convert import convert_left_to_right
 from func_convert import convert_ball_left_to_right
+from func_arrange_360_data import arrange_360_data
 
 
 # Set up the StatsBomb data loader
@@ -64,7 +69,7 @@ def main():
     global shortcounter_length_np
 
     # convert するか否か
-    convert = True
+    convert = False
 
 
     for i in reversed(range(len(df_games.index))): # reversed
@@ -98,50 +103,18 @@ def main():
 
 
         # データを選別、'360_data'、'possession'、'player_name'
-        df_actions = df_actions.loc[:,['period_id','time_seconds','team_id','start_x','start_y','end_x','end_y','type_name','play_pattern_name','result_name','team_name', '360_data']]
-
-        # 前半 left to right するチームの id 
-        team_id, team_id_convert = convert_team(df_actions)
-        print(team_id, team_id_convert)
-
-        if team_id_convert:
-            convert_team_id_1st_half = team_id
-        break
-        '''# convert_team_id_1st_half = convert_team(df_actions)
-
-        # 後半 left to right するチームの id 
-        if convert_team_id_1st_half == df_teams['team_id'].iloc[0]:
-            convert_team_id_2nd_half = df_teams['team_id'].iloc[1]
-            main_team_id_1st_half = df_teams['team_id'].iloc[1]
-            main_team_id_2nd_half = df_teams['team_id'].iloc[0]
-        else:
-            convert_team_id_2nd_half = df_teams['team_id'].iloc[0]
-            main_team_id_1st_half = df_teams['team_id'].iloc[0]
-            main_team_id_2nd_half = df_teams['team_id'].iloc[1]
-
-        print(main_team_id_1st_half,convert_team_id_1st_half,main_team_id_2nd_half,convert_team_id_2nd_half)'''
-
-
-        # データを選別、'360_data'、'possession'、'player_name'
-        df_actions = df_actions.loc[:,['period_id','time_seconds','team_id','start_x','start_y','end_x','end_y','type_name','play_pattern_name','result_name','team_name', '360_data']]
+        df_actions = df_actions.loc[:,['period_id','time_seconds','play_pattern_name','team_name','team_id','position_name','type_name','result_name','under_pressure','counterpress','360_data','start_x','start_y','end_x','end_y']]
         
         # df_actions['attack_team_id'] = 0
+        # df_actions['label_length'] = 0
+        # df_actions['sequence_label'] = 0
 
         df_actions['label'] = 5
-
-        df_actions['label_length'] = 0
-
         df_actions['until_longcounter'] = 1
-
         df_actions['until_shortcounter'] = 1
-
         df_actions['until_own_half_possession'] = 1
-
         df_actions['until_opposition_half_possession'] = 1
-
         df_actions['until_others'] = 1
-
-        # df_actions['sequence_label'] = 0
 
 
         # 前後半で判別
@@ -152,34 +125,50 @@ def main():
         df_actions_1sthalf.reset_index(drop=True, inplace=True)
         df_actions_2ndhalf.reset_index(drop=True, inplace=True)
         
-
-        df_actions_1sthalf.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\"+ competition_name +"\\df_1st_half.csv")
-        df_actions_2ndhalf.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\"+ competition_name +"\\df_2nd_half.csv")
+        # convert するチームの id 
+        convert_team_id_1sthalf, not_convert_team_id_1sthalf, convert_team_id_2ndhalf, not_convert_team_id_2ndhalf = convert_team(df_actions_1sthalf, df_teams['team_id'].iloc[0], df_teams['team_id'].iloc[1])
+        print(convert_team_id_1sthalf, not_convert_team_id_1sthalf, convert_team_id_2ndhalf, not_convert_team_id_2ndhalf)
         
-
         if convert:
-            arrange_360_data(df_actions_1sthalf, convert_team_id_1st_half)
-            arrange_360_data(df_actions_2ndhalf, convert_team_id_2nd_half)
+            arrange_360_data(df_actions_1sthalf, convert_team_id_1sthalf)
+            arrange_360_data(df_actions_2ndhalf, convert_team_id_2ndhalf)
+            convert_left_to_right(df_actions_1sthalf)
+            convert_left_to_right(df_actions_2ndhalf)
+
+            # 前半
+            label(df_actions_1sthalf, convert_team_id_1sthalf)
+
+            # 後半
+            # label(df_actions_2ndhalf, convert_team_id_2ndhalf, convert)
+
         else:
-            arrange_360_data(df_actions_1sthalf, main_team_id_1st_half)
-            arrange_360_data(df_actions_2ndhalf, main_team_id_2nd_half)
+            arrange_360_data(df_actions_1sthalf, not_convert_team_id_1sthalf)
+            arrange_360_data(df_actions_2ndhalf, not_convert_team_id_2ndhalf)
 
-        # 前半
-        label(df_actions_1sthalf, main_team_id_1st_half, convert_team_id_1st_half, convert)
+            # 前半
+            label(df_actions_1sthalf, not_convert_team_id_1sthalf)
 
-        # 後半
-        label(df_actions_2ndhalf, main_team_id_2nd_half, convert_team_id_2nd_half, convert)
-        
+            # 後半
+            # label(df_actions_2ndhalf, not_convert_team_id_2ndhalf, convert)
+
+        df_actions_1sthalf.drop(['360_data'], axis=1)
+
+        # df_actions to csv
+        # df_actions_1sthalf.to_csv("C:\\Users\\kento\\OneDrive\\My_Research\\Data\\df_actions_1sthalf.csv")
+
         # counter_length(df_actions_1sthalf)
         # ounter_length(df_actions_2ndhalf)
 
         # 前半
-        sequence_spilit(df_actions_1sthalf, main_team_id_1st_half, convert_team_id_1st_half, convert)
+        # sequence_spilit(df_actions_1sthalf, main_team_id_1sthalf, convert_team_id_1sthalf, convert)
 
         # 後半
-        sequence_spilit(df_actions_2ndhalf, main_team_id_2nd_half, convert_team_id_2nd_half, convert)
+        # sequence_spilit(df_actions_2ndhalf, main_team_id_2ndhalf, convert_team_id_2ndhalf, convert)
 
 
+        # df_actions_1sthalf.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\"+ competition_name +"\\df_1st_half.csv")
+        # df_actions_2ndhalf.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\"+ competition_name +"\\df_2nd_half.csv")
+        
         print((i + 1) / len(df_games))
         break
 
@@ -208,7 +197,7 @@ sequence_style_number = 0
 
 
 # 攻撃シーケンス分類かつそれぞれの局面関数に移動させてラベル付与
-def label(df_actions_half, main_team_id, convert_team_id, convert):
+def label(df_actions_half, main_team_id):
 
     global b # 大会でのlongcounterの個数
     global c # 大会でのlongcounterの個数
@@ -228,26 +217,32 @@ def label(df_actions_half, main_team_id, convert_team_id, convert):
         elif (df_actions_half.loc[j + 1, ['play_pattern_name']].isnull() == True).any().any():
             pass
 
-        # play_pattern_nameが変わったらout of play
-        elif (df_actions_half.loc[j, ['play_pattern_name']] != df_actions_half.loc[j + 1, ['play_pattern_name']]).any().any() or (df_actions_half.loc[j + 1, ['type_name']] == 'throw_in').any().any() or (df_actions_half.loc[j + 1, ['type_name']] == 'corner_kick').any().any() or (df_actions_half.loc[j + 1, ['type_name']] == 'goalkick').any().any() or (df_actions_half.loc[j + 1, ['type_name']] == 'freekick_crossed').any().any():
+        # play_pattern_nameが変わったらout of play，前のイベントと20秒以上離れていたら区切る
+        elif (df_actions_half.loc[j, ['play_pattern_name']] != df_actions_half.loc[j + 1, ['play_pattern_name']]).any().any() or (int(df_actions_half.loc[j + 1, ['time_seconds']].iloc[0]) - int(df_actions_half.loc[j, ['time_seconds']].iloc[0]) >= 15) or (df_actions_half.loc[j + 1, ['type_name']] == 'throw_in').any().any() or (df_actions_half.loc[j + 1, ['type_name']] == 'corner_kick').any().any() or (df_actions_half.loc[j + 1, ['type_name']] == 'goalkick').any().any() or (df_actions_half.loc[j + 1, ['type_name']] == 'freekick_crossed').any().any():
 
-            # 次の play_pattern_name が regular play の場合、継続
-            if (df_actions_half.loc[j + 1, ['play_pattern_name']].isin(['Regular Play']) == True).any().any():
-                continue
+            # play_patternで区切った場合ややこしい
+            if (df_actions_half.loc[j, ['play_pattern_name']] != df_actions_half.loc[j + 1, ['play_pattern_name']]).any().any():
+            
+                # 次の play_pattern_name が regular play の場合、継続
+                if (df_actions_half.loc[j + 1, ['play_pattern_name']].isin(['Regular Play']) == True).any().any():
+                    continue
 
-            # 次の play_pattern_name が From Counter の場合、継続
-            if (df_actions_half.loc[j + 1, ['play_pattern_name']].isin(['From Counter']) == True).any().any():
-                continue
+                # 次の play_pattern_name が From Counter の場合、継続
+                if (df_actions_half.loc[j + 1, ['play_pattern_name']].isin(['From Counter']) == True).any().any():
+                    continue
 
-            df_in_play = df_actions_half[next_in_play_start : j + 1]
+            df_in_play = df_actions_half[next_in_play_start : j + 1].copy()
 
             # indexの振り直し
             df_in_play.reset_index(drop=True, inplace=True)
 
-            next_attack_sequence_start = 0
 
+            label_tactical_actions(df_in_play, main_team_id)
+            
+            '''next_attack_sequence_start = 0
 
             # ２．攻撃シーケンスを区切る
+
             for k in range(len(df_in_play) - 1):
 
                 # 攻撃チームidを記憶
@@ -268,6 +263,7 @@ def label(df_actions_half, main_team_id, convert_team_id, convert):
                     # convert
                     # convert_team_id じゃなかったら守備
                     if convert:
+                        # 攻撃
                         if (attack_team_id == convert_team_id).any().any():
                             convert_ball_left_to_right(df_attack_sequence)
 
@@ -286,11 +282,14 @@ def label(df_actions_half, main_team_id, convert_team_id, convert):
                             if (attack_team_id == convert_team_id).any().any():
                                 convert_ball_left_to_right(df_attack_sequence)
 
+                        # 守備
                         else:
                             df_actions_half.loc[start : end, ['label']] = 0
 
+                    # convertしない
                     # main_team_id じゃなかったら守備
                     else:
+                        # 攻撃
                         if (attack_team_id == main_team_id).any().any():
 
                             # longcounter かどうか
@@ -304,13 +303,14 @@ def label(df_actions_half, main_team_id, convert_team_id, convert):
                                 if sequence_style_number != 2:
                                     seg_possession(df_attack_sequence, df_actions_half, start, end)
 
+                        # 守備
                         else:
                             df_actions_half.loc[start : end, ['label']] = 0
 
 
                     # attack_team_idを保存
                     for l in range(start,end + 1):
-                        df_actions_half.loc[l, ['attack_team_id']] = float(attack_team_id)
+                        df_actions_half.loc[l, ['attack_team_id']] = float(attack_team_id.iloc[0])
 
 
                 # 二回連続で違うチームが来たら相手チームの攻撃シーケンス
@@ -330,6 +330,7 @@ def label(df_actions_half, main_team_id, convert_team_id, convert):
                         # convert
                         # convert_team_id じゃなかったら守備
                         if convert:
+                            # 攻撃
                             if (attack_team_id == convert_team_id).any().any():
                                 convert_ball_left_to_right(df_attack_sequence)
 
@@ -344,11 +345,14 @@ def label(df_actions_half, main_team_id, convert_team_id, convert):
                                 if (attack_team_id == convert_team_id).any().any():
                                     convert_ball_left_to_right(df_attack_sequence)
 
+                            # 守備
                             else:
                                 df_actions_half.loc[start : end, ['label']] = 0
 
+                        # convertしない
                         # main_team_id じゃなかったら守備
                         else:
+                            # 攻撃
                             if (attack_team_id == main_team_id).any().any():
 
                                 # longcounter かどうか
@@ -358,16 +362,19 @@ def label(df_actions_half, main_team_id, convert_team_id, convert):
                                 if sequence_style_number != 1:
                                     sequence_style_number = seg_shortcounter(df_attack_sequence, df_actions_half, start, end)
 
+                            # 守備
                             else:
                                 df_actions_half.loc[start : end, ['label']] = 0
 
                         # attack_team_idを保存
                         for l in range(start,end + 1):
-                            df_actions_half.loc[l, ['attack_team_id']] = float(attack_team_id)
+                            df_actions_half.loc[l, ['attack_team_id']] = float(attack_team_id.iloc[0])
 
                         next_attack_sequence_start = k
 
-            next_in_play_start = j + 1
+            next_in_play_start = j + 1'''
+
+    seg_counterpress(df_actions_half)
 
 
 
@@ -603,132 +610,6 @@ def time_reset(df):
     return df
 
 
-# 360_dataの整形
-def arrange_360_data(df, main_team_id):
-
-    three_sixty_data = df['360_data']
-
-    df['teammate_count'] = 0
-    df['opponent_count'] = 0
-
-    # 新しい列を作って0埋め
-    for i in range(1,12):
-        df['teammate_' + str(i) + '_x'] = -1.0
-        df['teammate_' + str(i) + '_y'] = -1.0
-        df['opponent_' + str(i) + '_x'] = -1.0
-        df['opponent_' + str(i) + '_y'] = -1.0
-
-
-    for i in range(len(three_sixty_data)):
-        
-        one_event_data = three_sixty_data[i]
-
-        # teammate_1 or opponent_1 の位置となるボール位置
-        ball_position_x = df.loc[i, ['start_x']].copy()
-        ball_position_y = df.loc[i, ['start_y']].copy()
-
-        # which team does have possession
-        # main team is attacking
-        if (df.loc[i, ['team_id']] == main_team_id).any().any():
-
-            # チームメート一人目はボール位置
-            df.loc[i, ['teammate_1_x']] = float(ball_position_x)
-            df.loc[i, ['teammate_1_y']] = float(ball_position_y)
-
-            # チームメート数
-            teammate_count = 1
-            # 相手チームメート数
-            opponent_count = 0
-            
-            # 映っている選手いるか
-            if three_sixty_data[i] == 0:
-                continue
-            else:
-
-                for j in range(len(one_event_data)):
-                    one_person_data = one_event_data[j]
-
-                    # 審判かどうか
-                    if one_person_data["actor"] == True:
-                        continue
-
-                    # keeper かどうか
-                    # keeper は11人目に入れる
-                    elif one_person_data["keeper"] == True:
-                        # チームメートかどうか
-                        if one_person_data["teammate"] == True:
-                            df.loc[i, ['teammate_11_x']] = one_person_data['location'][0]
-                            df.loc[i, ['teammate_11_y']] = one_person_data['location'][1]
-                        else:
-                            df.loc[i, ['opponent_11_x']] = one_person_data['location'][0]
-                            df.loc[i, ['opponent_11_y']] = one_person_data['location'][1]
-                    else:
-
-                        # チームメートかどうか
-                        if one_person_data["teammate"] == True:
-                            teammate_count += 1
-                            df.loc[i, ['teammate_' + str(teammate_count) + '_x']] = one_person_data['location'][0]
-                            df.loc[i, ['teammate_' + str(teammate_count) + '_y']] = one_person_data['location'][1]
-                        else:
-                            opponent_count += 1
-                            df.loc[i, ['opponent_' + str(opponent_count) + '_x']] = one_person_data['location'][0]
-                            df.loc[i, ['opponent_' + str(opponent_count) + '_y']] = one_person_data['location'][1]
-
-                df.loc[i, 'teammate_count'] = teammate_count
-                df.loc[i, 'opponent_count'] = opponent_count
-
-
-        # main team doesn't have possession(opponent team has possession)
-        else:
-
-            # 相手チーム一人目はボール位置
-            df.loc[i, ['opponent_1_x']] = float(ball_position_x)
-            df.loc[i, ['opponent_1_y']] = float(ball_position_y)
-
-            # チームメート数
-            teammate_count = 0
-            # 相手チームメート数
-            opponent_count = 1
-            
-            # 映っている選手いるか
-            if three_sixty_data[i] == 0:
-                continue
-            else:
-
-                for j in range(len(one_event_data)):
-                    one_person_data = one_event_data[j]
-
-                    # 審判かどうか
-                    if one_person_data["actor"] == True:
-                        continue
-
-                    # keeper かどうか
-                    # keeper は11人目に入れる
-                    elif one_person_data["keeper"] == True:
-                        # チームメートかどうか
-                        if one_person_data["teammate"] == True:
-                            df.loc[i, ['opponent_11_x']] = one_person_data['location'][0]
-                            df.loc[i, ['opponent_11_y']] = one_person_data['location'][1]
-                        else:
-                            df.loc[i, ['teammate_11_x']] = one_person_data['location'][0]
-                            df.loc[i, ['teammate_11_y']] = one_person_data['location'][1]
-                    
-                    # keeperじゃない
-                    else:
-                        # チームメートかどうか
-                        if one_person_data["teammate"] == True:
-                            opponent_count += 1
-                            df.loc[i, ['opponent_' + str(opponent_count) + '_x']] = one_person_data['location'][0]
-                            df.loc[i, ['opponent_' + str(opponent_count) + '_y']] = one_person_data['location'][1]
-                        else:
-                            teammate_count += 1
-                            df.loc[i, ['teammate_' + str(teammate_count) + '_x']] = one_person_data['location'][0]
-                            df.loc[i, ['teammate_' + str(teammate_count) + '_y']] = one_person_data['location'][1]
-
-                df.loc[i, 'teammate_count'] = teammate_count
-                df.loc[i, 'opponent_count'] = opponent_count
-
-
 # それぞれのシーケンスをto_csv
 def seg_to_csv(df_sequence, convert, sequence_type):
 
@@ -746,7 +627,7 @@ def seg_to_csv(df_sequence, convert, sequence_type):
 
     if convert:
         count_sequence += 1
-        df_sequence.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\test_sequence\\" + competition_name + "_convert\\" + str(count_sequence).zfill(6) + ".csv")
+        # df_sequence.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\test_sequence\\" + competition_name + "_convert\\" + str(count_sequence).zfill(6) + ".csv")
         print(str(count_sequence).zfill(6))
 
         '''# if (df_sequence.loc[0, ['until_longcounter']] != 1).any().any():
@@ -761,9 +642,9 @@ def seg_to_csv(df_sequence, convert, sequence_type):
             count_sequence += 1
             include_shortcounter += 1
             df_sequence.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\sequence\\" + competition_name + "\\shortcounter\\" + str(include_shortcounter).zfill(6) + ".csv")
-            print(str(include_shortcounter).zfill(6))'''
+            print(str(include_shortcounter).zfill(6))
 
-        '''elif (df_sequence.loc[0, ['until_opposition_half_possession']] != 1).any().any():
+        elif (df_sequence.loc[0, ['until_opposition_half_possession']] != 1).any().any():
             count_sequence += 1
             include_opposition_half_possession += 1
             df_sequence.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\sequence\\" + competition_name + "\\opposition_half_possession\\" + str(include_opposition_half_possession).zfill(6) + ".csv")
@@ -784,7 +665,7 @@ def seg_to_csv(df_sequence, convert, sequence_type):
 
     else:
         count_sequence += 1
-        df_sequence.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\test_sequence\\" + competition_name + "\\" + str(count_sequence).zfill(6) + ".csv")
+        # df_sequence.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\test_sequence\\" + competition_name + "\\" + str(count_sequence).zfill(6) + ".csv")
         print(str(count_sequence).zfill(6))
 
         '''# if (df_sequence.loc[0, ['until_longcounter']] != 1).any().any():
@@ -799,9 +680,9 @@ def seg_to_csv(df_sequence, convert, sequence_type):
             count_sequence += 1
             include_shortcounter += 1
             df_sequence.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\sequence\\" + competition_name + "\\shortcounter\\" + str(include_shortcounter).zfill(6) + ".csv")
-            print(str(include_shortcounter).zfill(6))'''
+            print(str(include_shortcounter).zfill(6))
 
-        '''elif (df_sequence.loc[0, ['until_opposition_half_possession']] != 1).any().any():
+        elif (df_sequence.loc[0, ['until_opposition_half_possession']] != 1).any().any():
             count_sequence += 1
             include_opposition_half_possession += 1
             df_sequence.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\sequence\\" + competition_name + "\\opposition_half_possession\\" + str(include_opposition_half_possession).zfill(6) + ".csv")
