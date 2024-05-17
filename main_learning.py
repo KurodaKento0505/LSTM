@@ -10,6 +10,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 import optuna
+import socceraction.spadl as spadl
+from socceraction.data.statsbomb import StatsBombLoader
 
 '''GPUチェック'''
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -19,23 +21,51 @@ import csv
 import pandas as pd
 import os
 import random
-import cv2
 import numpy as np
 from func_heatmap import make_heatmap
-from LSTM import LSTM
-from CNN import CNN
-from LSTM import transform
+from func_LSTM import LSTM
+from func_CNN import CNN
+from func_LSTM import transform
 
 '''from func_make_graph import make_graph
 from func_make_vector import make_vector
 from LSTM_percent import count_player'''
 
 
+# Set up the StatsBomb data loader
+SBL = StatsBombLoader()
+
+# View all available competitions
+df_competitions = SBL.competitions()
+
+competition_id = 43
+season_id = 106
+competition_name = "FIFA_World_Cup_2022" # FIFA_World_Cup_2022, UEFA_Euro_2020, UEFA_Women's_Euro_2022, Women's_World_Cup_2023
+print(competition_name)
+
+# Create a dataframe with all games from UEFA Euro
+df_games = SBL.games(competition_id, season_id).set_index("game_id")
+
 # what kind of data
 data = 'gray_heatmap' # only_x_3_players only_x_6_players only_x_10_players only_x_no_player both_xy_no_player 
 
-competition = "FIFA_World_Cup_2022" # FIFA_World_Cup_2022, UEFA_Euro_2020, UEFA_Women's_Euro_2022, Women's_World_Cup_2023, _convert
-print(competition)
+# data_length
+data_length = 9
+
+# number of player
+number_of_player = 10
+
+# 戦術的行動の数
+number_of_tactical_action = 7
+
+# test か否か
+test = True
+
+# val か否か
+val = False
+
+# make_graph か否か
+make_graph = False
 
 
 def main():
@@ -48,31 +78,28 @@ def main():
     # ラベル変更かつ全部同じファイルに
     label(labels,competition_name)'''
 
-    # data_length
-    data_length = 11
 
-    # number of player
-    number_of_player = 10
+    for i in range(len(df_games.index)):
 
-    # 戦術的行動の数
-    number_of_tactical_action = 4
+        game_id = df_games.index[i]
 
-    # test か否か
-    test = True
+        df_teams = SBL.teams(game_id)
 
-    # val か否か
-    val = False
+        for j in range(len(df_teams.index)):
 
-    # make_graph か否か
-    make_graph = False
-
-
-    # train
-    if test != True:
-        dir = "C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\sequence_choice_42000"
-    # test
-    else:
-        dir = "C:\\Users\\黒田堅仁\\OneDrive\\My_Research\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\test_sequence\\" + competition # _convert
+            main_team_id = df_teams.loc[j, 'team_id']
+    
+            # train
+            if test != True:
+                dir = "C:\\Users\\kento\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\sequence_choice_42000"
+            # test
+            else:
+                if j == 0:
+                    sequence_np = np.load("C:\\Users\\kento\\OneDrive - 筑波大学\\ドキュメント\\研究室\\My_Research\\Data\\comp_sequence_np\\" + competition_name + "\\" + game_id + "_1sthalf_" + main_team_id + ".npy")
+                    label_np = np.load("C:\\Users\\kento\\OneDrive - 筑波大学\\ドキュメント\\研究室\\My_Research\\Data\\comp_label_np\\" + competition_name + "\\" + game_id + "_1sthalf_" + main_team_id + ".npy")
+                else:
+                    sequence_np = np.load("C:\\Users\\kento\\OneDrive - 筑波大学\\ドキュメント\\研究室\\My_Research\\Data\\comp_sequence_np\\" + competition_name + "\\" + game_id + "_2ndhalf_" + main_team_id + ".npy")
+                    label_np = np.load("C:\\Users\\kento\\OneDrive - 筑波大学\\ドキュメント\\研究室\\My_Research\\Data\\comp_label_np\\" + competition_name + "\\" + game_id + "_2ndhalf_" + main_team_id + ".npy")
     
     # ファイルの長さ
     file_length = count_file(dir)
@@ -176,8 +203,8 @@ def main():
     else:
         if make_graph:
             # make_graph
-            sequence_np = np.load("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + '_sequence_np.npy') # \\test test_ vector_ include_possession_
-            label_np = np.load("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + "_label_np.npy")
+            sequence_np = np.load("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition_name + "\\" + data + '_sequence_np.npy') # \\test test_ vector_ include_possession_
+            label_np = np.load("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition_name + "\\" + data + "_label_np.npy")
 
         else:
             # random_test_data
@@ -221,7 +248,7 @@ def percent_calculate(outputs, labels, length, test, number_of_tactical_action, 
 
         if make_graph:
             # make_graph
-            dir = "C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\test_sequence\\" + competition
+            dir = "C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\test_sequence\\" + competition_name
 
             df_make_graph = pd.DataFrame()
 
@@ -240,7 +267,7 @@ def percent_calculate(outputs, labels, length, test, number_of_tactical_action, 
                 df_make_graph.loc[i, ['start_x', 'start_y', 'time_seconds', 'label', 'output_until_longcounter', 'output_until_shortcounter', 'output_until_opposition_half_possession', 'output_until_own_half_possession']] = df.loc[5, ['start_x', 'start_y', 'time_seconds', 'label', 'output_until_longcounter', 'output_until_shortcounter', 'output_until_opposition_half_possession', 'output_until_own_half_possession']]
                 df_make_graph.loc[i, ['until_longcounter', 'until_shortcounter', 'until_opposition_half_possession', 'until_own_half_possession']] = df.loc[0, ['until_longcounter', 'until_shortcounter', 'until_opposition_half_possession', 'until_own_half_possession']]
 
-            df_make_graph.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition + "\\" + data + "_outputs.csv")
+            df_make_graph.to_csv("C:\\Users\\黒田堅仁\\OneDrive\\My_Research\\Dataset\\StatsBomb\\segmentation\\add_player\\when_start_point\\counter_possession_others\\data_42000\\test_data\\" + competition_name + "\\" + data + "_outputs.csv")
 
 
             # 前半と後半を区別
