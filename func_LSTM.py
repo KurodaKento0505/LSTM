@@ -22,7 +22,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(device)
 
 
-def LSTM(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val, data_variable_list): 
+def LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val): 
 
 
     batch_size = 512
@@ -31,21 +31,30 @@ def LSTM(sequence_np, label_np, number_of_player, number_of_tactical_action, tes
     lr = 0.01
 
 
+    # slice する数を計算
+    slice_len = len(sequence_np) % 10
+    sequence_np = np.delete(sequence_np, slice(len(sequence_np) - slice_len, len(sequence_np)), 0)
+    label_np = np.delete(label_np, slice(len(sequence_np) - slice_len, len(sequence_np)), 0)
+
+
     # transform
-    # train_x = transform(sequence_np, data_variable_list)
+    sequence_np = transform(sequence_np)
 
 
     # torch.tensorでtensor型に
     train_x = torch.from_numpy(sequence_np.astype(np.float32)).clone()
     train_t = torch.from_numpy(label_np.astype(np.float32)).clone()
 
+    print('train_x:', train_x.shape)
+    print('train_t:', train_t.shape)
+
 
     if test != True:
         dataset = torch.utils.data.TensorDataset(train_x, train_t)
 
-        train_size = int(len(dataset) * 0.6) # train_size is 3000
-        val_size = int(len(dataset) * 0.2) # val_size is 1000
-        test_size = int(len(dataset) * 0.2)# val_size is 1000
+        train_size = int(len(dataset) * 0.8) # train_size is 3000
+        val_size = int(len(dataset) * 0.1) # val_size is 1000
+        test_size = int(len(dataset) * 0.1)# val_size is 1000
         train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(3)) # 42
         
         trainloader = torch.utils.data.DataLoader(train_dataset, batch_size, shuffle = True, num_workers = 0)
@@ -71,7 +80,7 @@ def LSTM(sequence_np, label_np, number_of_player, number_of_tactical_action, tes
 
     # 時間を入れるか入れないか input_dim=3 or 2
     # only_x : * 1 + 2, x + y : * 2 + 3
-    model = LSTMClassification(input_dim = data_variable_list[2] * data_variable_list[3], 
+    model = LSTMClassification(input_dim = dim_of_image, 
                             hidden_dim = hidden_dim, 
                             target_size = number_of_tactical_action)
 
@@ -120,7 +129,6 @@ class LSTMClassification(nn.Module):
             # scores = torch.sigmoid(logits)
             # print(np.shape(scores))
             return scores
-        
 
 
 
@@ -213,26 +221,28 @@ def evaluate(model, loader, number_of_tactical_action):
 
 
 
-def transform(train_x, data_variable_list):
+def transform(sequence_np):
 
     # 変数宣言
-    data_size = data_variable_list[0]
-    seq_length = data_variable_list[1]
-    input_size = data_variable_list[2] * data_variable_list[3] * data_variable_list[4]
+    data_size = int(sequence_np.shape[0])
+    seq_length = int(sequence_np.shape[1])
+    input_size = int(sequence_np.shape[2]) * int(sequence_np.shape[3]) * int(sequence_np.shape[4])
 
     # 学習データ初期化
-    input_data = np.zeros((data_size, seq_length, input_size))
+    train_x = np.zeros((data_size, seq_length, input_size))
 
     # 学習データ数分ループ
     for i in range(data_size):
         # 1枚の画像に含まれるシーケンスデータの数分ループ
         for j in range(seq_length):
             # 行方向にループ
-            for k in range(data_variable_list[2]):
+            for k in range(int(sequence_np.shape[2])):
                 # 列方向にループ
-                for l in range(data_variable_list[3]):
-                    # input_dataにtrain_imgsのn_time分のシーケンスデータを入れていく
-                    input_data[i, j, k * data_variable_list[3] + l] = train_x[i, j, k, l]
+                for l in range(int(sequence_np.shape[3])):
+                    # channel方向にループ
+                    for m in range(int(sequence_np.shape[4])):
+                        # input_dataにtrain_imgsのn_time分のシーケンスデータを入れていく
+                        train_x[i, j, k * int(sequence_np.shape[3]) + l * int(sequence_np.shape[4]) + m] = sequence_np[i, j, k, l, m]
 
         if i % 1000 == 0:
             print(i)
@@ -252,4 +262,4 @@ def transform(train_x, data_variable_list):
                     # input_dataにtrain_imgsのn_time分のシーケンスデータを入れていく
                     input_data[i, j, k, l] = train_x[i, j, k * data_variable_list[3] + l]'''
 
-    return input_data
+    return train_x

@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 # import matplotsoccer as mps
 
 from func_label_tactical_actions import label_tactical_actions
-from func_convert import convert_team
-from func_convert import convert_left_to_right
-from func_convert import convert_ball_left_to_right
 from func_arrange_data import arrange_data
 from func_heatmap import make_heatmap
+from func_connect_data import connect_data
+from func_label_time import label_time_by_starting
+from func_label_attack_or_defense import label_attack_or_defense
 
 
 # Set up the StatsBomb data loader
@@ -21,24 +21,45 @@ SBL = StatsBombLoader()
 # View all available competitions
 df_competitions = SBL.competitions()
 
+
+##################################################################################################################################################
 competition_id = 43
 season_id = 106
-competition_name = "FIFA_World_Cup_2022" # FIFA_World_Cup_2022, UEFA_Euro_2020, UEFA_Women's_Euro_2022, Women's_World_Cup_2023
+competition_name = "FIFA_World_Cup_2022" # FIFA_World_Cup_2022(43,106), UEFA_Euro_2020, UEFA_Women's_Euro_2022(53,106), Women's_World_Cup_2023
 
-# Create a dataframe with all games from UEFA Euro
-df_games = SBL.games(competition_id, season_id).set_index("game_id")
+# connect
+connect = True
+
+# sequence, label or both
+purpose = 'label'
 
 # heatmap
-grid_size_x = 30
-grid_size_y = 20
+grid_size_x = 24
+grid_size_y = 16
 
 # data_length
 data_length = 9
 
+# data
+sequence_data = 'grid_' + str(grid_size_y) + '_' + str(grid_size_x)
+label_data = 'tactical_action' # tactical_action, time_to_tactical_action
+###################################################################################################################################################
 
 
-#######################################################################################ここ変える########################################################
-# 一つの大会におけるcount sequence
+# Create a dataframe with all games from UEFA Euro
+df_games = SBL.games(competition_id, season_id).set_index("game_id")
+
+# 各戦術的行動の名前 
+if label_data != 'attack_or_defense':
+    tactical_action_name_list = ['longcounter', 'shortcounter', 'opposition_half_possession', 'own_half_possession', 'counterpressing', 'highpressing', 'middlepressing']
+else:
+    tactical_action_name_list = ['attack', 'defense']
+
+# 戦術的行動の数
+number_of_tactical_action = len(tactical_action_name_list)
+
+
+'''# 一つの大会におけるcount sequence
 count_sequence = 0
 
 # 一つの大会における戦術的行動の数
@@ -51,92 +72,100 @@ include_highpressing = 0
 include_middlepressing = 0
 
 # in playの長さ
-in_play_np = np.empty([0])
+in_play_np = np.empty([0])'''
 
 
 def main():
 
 
 
-    for i in range(len(df_games.index)): # reversed
+    # segmentation for making sequence and label dataset
+    if connect != True:
 
-        '''if i == 0 or i == 1 or i == 2:
-            continue'''
-        
-        '''if i == len(df_games.index) - 1: # or i == len(df_games.index) - 2 or i == len(df_games.index) - 3:
-            continue'''
+        for i in range(len(df_games.index)): # reversed
 
-        game_id = df_games.index[i]
-        df_teams = SBL.teams(game_id)
-        df_players = SBL.players(game_id)
-        df_events = SBL.events(game_id, True)  # 360dataが含まれる = True
+            '''if i == 0 or i == 1 or i == 2:
+                continue'''
+            
+            '''if i == len(df_games.index) - 1: # or i == len(df_games.index) - 2 or i == len(df_games.index) - 3:
+                continue'''
 
-        home_team_id = df_games.at[game_id, "home_team_id"]
+            game_id = df_games.index[i]
+            df_teams = SBL.teams(game_id)
+            df_players = SBL.players(game_id)
+            df_events = SBL.events(game_id, True)  # 360dataが含まれる = True
 
-
-        # spdlによって、df_eventsをdf_actionsに変更
-        df_actions = spadl.statsbomb.convert_to_actions(df_events, home_team_id)
-
-        # Replace result, actiontype and bodypart IDs by their corresponding name
-        df_actions = spadl.add_names(df_actions)
-
-        # Add team and player names
-        df_actions = df_actions.merge(df_teams).merge(df_players)
-        
-        # period_id,timestampで並べ替え
-        df_actions = df_actions.sort_values(['period_id','time_seconds']) 
+            home_team_id = df_games.at[game_id, "home_team_id"]
 
 
-        # データを選別、'360_data'、'possession'、'player_name'
-        df_actions = df_actions.loc[:,['period_id','time_seconds','play_pattern_name','team_name','team_id','position_name','position_id','type_name','result_name','under_pressure','counterpress','360_data','start_x','start_y','end_x','end_y']]
+            # spdlによって、df_eventsをdf_actionsに変更
+            df_actions = spadl.statsbomb.convert_to_actions(df_events, home_team_id)
 
-        df_actions['longcounter'] = 0
-        df_actions['shortcounter'] = 0
-        df_actions['own_half_possession'] = 0
-        df_actions['opposition_half_possession'] = 0
-        df_actions['counterpressing'] = 0
-        df_actions['highpressing'] = 0
-        df_actions['middlepressing'] = 0
+            # Replace result, actiontype and bodypart IDs by their corresponding name
+            df_actions = spadl.add_names(df_actions)
 
-
-        # 前後半で判別
-        df_actions_1sthalf = df_actions[df_actions["period_id"] == 1]
-        df_actions_2ndhalf = df_actions[df_actions["period_id"] == 2]
-
-        # indexの振り直し
-        df_actions_1sthalf.reset_index(drop=True, inplace=True)
-        df_actions_2ndhalf.reset_index(drop=True, inplace=True)
-
-        # 2つのチームで main_team_id をループ
-        for j in range(2):
-            main_team_id = df_teams.loc[j, 'team_id']
-
-            # main_team_id 入力
-            df_actions_1sthalf.loc[0, 'main_team_id'] = main_team_id
-            df_actions_2ndhalf.loc[0, 'main_team_id'] = main_team_id
-
-            print('main_team_id:',main_team_id)
-
-            arrange_data(df_actions_1sthalf, main_team_id)
-            arrange_data(df_actions_2ndhalf, main_team_id)
-
-            label_and_sequence_split(df_actions_1sthalf, main_team_id, game_id, 1)
-            label_and_sequence_split(df_actions_2ndhalf, main_team_id, game_id, 2)
-
-            # sequence_spilit(df_actions_1sthalf, main_team_id)
-            # sequence_spilit(df_actions_2ndhalf, main_team_id)
-
-            # df_actions_1sthalf.drop(['360_data'], axis=1)
-
-            # df_actions to csv
-            df_actions_1sthalf.to_csv("C:\\Users\\kento\\OneDrive\\My_Research\\Data\\df_actions\\" + competition_name + "\\"+ str(game_id) + "_1sthalf_" + str(main_team_id) + ".csv")
-            df_actions_2ndhalf.to_csv("C:\\Users\\kento\\OneDrive\\My_Research\\Data\\df_actions\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".csv")
-
-            # counter_length(df_actions_1sthalf)
-            # ounter_length(df_actions_2ndhalf)
+            # Add team and player names
+            df_actions = df_actions.merge(df_teams).merge(df_players)
+            
+            # period_id,timestampで並べ替え
+            df_actions = df_actions.sort_values(['period_id','time_seconds']) 
 
 
-        print((i + 1) / len(df_games))
+            # データを選別、'360_data'、'possession'、'player_name'
+            df_actions = df_actions.loc[:,['period_id','time_seconds','play_pattern_name','team_name','team_id','position_name','position_id','type_name','result_name','under_pressure','counterpress','360_data','start_x','start_y','end_x','end_y']]
+
+
+            # 前後半で判別
+            df_actions_1sthalf = df_actions[df_actions["period_id"] == 1]
+            df_actions_2ndhalf = df_actions[df_actions["period_id"] == 2]
+
+            # indexの振り直し
+            df_actions_1sthalf.reset_index(drop=True, inplace=True)
+            df_actions_2ndhalf.reset_index(drop=True, inplace=True)
+
+            # 2つのチームで main_team_id をループ
+            for j in range(2):
+
+                # 戦術的行動のラベルを割り振る場所を作成
+                for k in range(number_of_tactical_action):
+                    df_actions_1sthalf[tactical_action_name_list[k]] = 0
+                    df_actions_2ndhalf[tactical_action_name_list[k]] = 0
+                
+                '''# 戦術的行動の開始時刻までの時間を割り振る場所を作成
+                for k in range(number_of_tactical_action):
+                    df_actions['time_to_' + tactical_action_name_list[k]] = -20'''
+                
+                # ラベルがついているイベントデータにしるしをつけて，結果を比較しやすくする
+                df_actions_1sthalf['label'] = False
+                df_actions_2ndhalf['label'] = False
+
+                main_team_id = df_teams.loc[j, 'team_id'].copy()
+
+                # main_team_id 入力
+                df_actions_1sthalf.loc[0, 'main_team_id'] = main_team_id
+                df_actions_2ndhalf.loc[0, 'main_team_id'] = main_team_id
+
+                print('main_team_id:',main_team_id)
+
+                arrange_data(df_actions_1sthalf, main_team_id)
+                arrange_data(df_actions_2ndhalf, main_team_id)
+
+                label_and_sequence_split(df_actions_1sthalf, main_team_id, game_id, 1)
+                label_and_sequence_split(df_actions_2ndhalf, main_team_id, game_id, 2)
+
+                # df_actions to csv
+                # df_actions_1sthalf.to_csv("C:\\Users\\kento\\My_Research\\Data\\df_actions\\" + label_data + "\\" + competition_name + "\\"+ str(game_id) + "_1sthalf_" + str(main_team_id) + ".csv")
+                # df_actions_2ndhalf.to_csv("C:\\Users\\kento\\My_Research\\Data\\df_actions\\" + label_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".csv")
+
+                # df_actions_1sthalf.drop(['360_data'], axis=1)
+
+
+            print((i + 1) / len(df_games))
+            # break
+    
+    # connect sequence_data
+    else:
+        connect_data(competition_name, competition_id, season_id, data_length, grid_size_y, grid_size_x, sequence_data, label_data, purpose)
 
 
 
@@ -145,25 +174,17 @@ def main():
 def label_and_sequence_split(df_actions_half, main_team_id, game_id, half):
 
 
-    # 一つの大会におけるno_counter、include_long shortcounter
-    global include_longcounter
-    global include_shortcounter
-    global include_opposition_half_possession
-    global include_own_half_possession
-    global include_counterpressing
-    global include_highpressing
-    global include_middlepressing
-
-    global count_sequence
-
-    global data_length
-    global grid_size_x
-    global grid_size_y
-    
     next_in_play_start = 0
 
-    comp_sequence_np = np.empty((0, data_length, grid_size_y + 2, grid_size_x + 2))
+    # sequence
+    # comp_sequence_np = np.empty((0, data_length, grid_size_y + 2, grid_size_x + 2, 3))
+    # sequence_np_list = []
+
+    # label
+    # 戦術的行動
     comp_label_np = np.empty((0, 7))
+    # 攻守
+    # comp_label_np = np.empty((0, 2))
 
     for i in range(len(df_actions_half) - 1):
 
@@ -198,69 +219,91 @@ def label_and_sequence_split(df_actions_half, main_team_id, game_id, half):
                 continue
 
 
-            # 戦術的行動のラベル付け
-            label_tactical_actions(df_in_play, main_team_id)
+            if purpose != 'sequence':
+                
+                # ラベル付け
+                # 戦術的行動のラベル付け
+                if label_data == 'tactical_action':
+                    label_tactical_actions(df_in_play, main_team_id)
+
+                # 戦術的行動の開始時刻までの時間距離のラベル付け 
+                elif label_data == 'time_to_tactical_action':
+                    label_tactical_actions(df_in_play, main_team_id)
+                    label_time_by_starting(df_in_play, main_team_id, tactical_action_name_list)
+
+                # 攻守のラベル付け
+                else:
+                    label_attack_or_defense(df_in_play, main_team_id)
 
 
             # シーケンス分割
             # 注目データと前9データを一つのシーケンスに
             for j in range(data_length, len(df_in_play)):
 
-                # sequence分割
-                df_sequence = df_in_play.loc[ j - data_length : j , ['time_seconds','start_x','start_y','teammate_count','opponent_count','teammate_1_x','teammate_1_y','opponent_1_x','opponent_1_y','teammate_2_x','teammate_2_y','opponent_2_x','opponent_2_y','teammate_3_x','teammate_3_y','opponent_3_x','opponent_3_y','teammate_4_x','teammate_4_y','opponent_4_x','opponent_4_y','teammate_5_x','teammate_5_y','opponent_5_x','opponent_5_y','teammate_6_x','teammate_6_y','opponent_6_x','opponent_6_y','teammate_7_x','teammate_7_y','opponent_7_x','opponent_7_y','teammate_8_x','teammate_8_y','opponent_8_x','opponent_8_y','teammate_9_x','teammate_9_y','opponent_9_x','opponent_9_y','teammate_10_x','teammate_10_y','opponent_10_x','opponent_10_y','teammate_11_x','teammate_11_y','opponent_11_x','opponent_11_y']].copy()
+                if purpose != 'label':
 
-                # label分割
-                label_np = df_in_play.loc[j, ['longcounter','shortcounter','opposition_half_possession','own_half_possession','counterpressing','highpressing','middlepressing']].to_numpy()
+                    # sequence分割
+                    df_sequence = df_in_play.loc[ j - data_length : j , ['time_seconds','start_x','start_y','teammate_count','opponent_count','teammate_1_x','teammate_1_y','opponent_1_x','opponent_1_y','teammate_2_x','teammate_2_y','opponent_2_x','opponent_2_y','teammate_3_x','teammate_3_y','opponent_3_x','opponent_3_y','teammate_4_x','teammate_4_y','opponent_4_x','opponent_4_y','teammate_5_x','teammate_5_y','opponent_5_x','opponent_5_y','teammate_6_x','teammate_6_y','opponent_6_x','opponent_6_y','teammate_7_x','teammate_7_y','opponent_7_x','opponent_7_y','teammate_8_x','teammate_8_y','opponent_8_x','opponent_8_y','teammate_9_x','teammate_9_y','opponent_9_x','opponent_9_y','teammate_10_x','teammate_10_y','opponent_10_x','opponent_10_y','teammate_11_x','teammate_11_y','opponent_11_x','opponent_11_y']].copy()
 
-                # indexの振り直し
-                df_sequence.reset_index(drop=True, inplace=True)
+                    # indexの振り直し
+                    df_sequence.reset_index(drop=True, inplace=True)
 
+                    # time_reset の追加
+                    time_reset(df_sequence)
+                    
+                    # sequence to heatmap
+                    # sequence_np が返ってくる
+                    sequence_np = make_heatmap(df_sequence, data_length, grid_size_x, grid_size_y)
 
-                # sequence の教師信号（最後の行のラベル）中から各戦術的行動を見つける
-                if (label_np[0] == 1).any().any():
-                    include_longcounter += 1
-                elif (label_np[1] == 1).any().any():
-                    include_shortcounter += 1
-                elif (label_np[2] == 1).any().any():
-                    include_opposition_half_possession += 1
-                elif (label_np[3] == 1).any().any():
-                    include_own_half_possession += 1
-                elif (label_np[4] == 1).any().any():
-                    include_counterpressing += 1
-                elif (label_np[5] == 1).any().any():
-                    include_highpressing += 1
-                elif (label_np[6] == 1).any().any():
-                    include_middlepressing += 1
+                    # シーケンスをまとめる
+                    # sequence_np_list.append(sequence_np)
+                    comp_sequence_np = np.vstack((comp_sequence_np, [sequence_np]))
 
 
-                # time_reset の追加
-                time_reset(df_sequence)
-                
-                # sequence to heatmap
-                # gray_image_sequence_np が返ってくる
-                sequence_np = make_heatmap(df_sequence, data_length, grid_size_x, grid_size_y)
+                if purpose != 'sequence':
 
-                # シーケンスをまとめる
-                comp_sequence_np = np.vstack((comp_sequence_np, [sequence_np]))
-                comp_label_np = np.vstack((comp_label_np, [label_np]))
+                    # label分割
+                    # 戦術的行動
+                    if label_data == 'tactical_action':
+                        label_np = df_in_play.loc[j, ['longcounter','shortcounter','opposition_half_possession','own_half_possession','counterpressing','highpressing','middlepressing']].to_numpy()
+                    # 戦術的行動の開始時刻までの時間
+                    elif label_data == 'time_to_tactical_action':
+                        label_np = df_in_play.loc[j, ['time_to_longcounter','time_to_shortcounter','time_to_opposition_half_possession','time_to_own_half_possession','time_to_counterpressing','time_to_highpressing','time_to_middlepressing']].to_numpy()
+                    # 攻守
+                    else:
+                        label_np = df_in_play.loc[j, ['attack', 'defense']].to_numpy()
+
+                    # ラベルがついているイベントデータにしるしをつけて，結果を比較しやすくする
+                    df_in_play.loc[j, 'label'] = True
+
+                    # ラベルをまとめる
+                    comp_label_np = np.vstack((comp_label_np, [label_np]))
 
                 # count_sequence
-                count_sequence += 1
+                # count_sequence += 1
 
             next_in_play_start = i + 1
 
+    # comp_sequence_np = np.concatenate(sequence_np_list, axis=0)
+
+    # print(comp_sequence_np.shape)
+    
     # save sequence_np
     # 前半
     if half == 1:
-        np.save('C:\\Users\kento\\OneDrive\\My_Research\Data\\comp_sequence_np\\' + competition_name + '\\'+ str(game_id) + '_1sthalf_' + str(main_team_id), comp_sequence_np)
-        np.save('C:\\Users\kento\\OneDrive\\My_Research\Data\\comp_label_np\\' + competition_name + '\\'+ str(game_id) + '_1sthalf_' + str(main_team_id), comp_label_np)
+        if purpose != 'label':
+            np.save('C:\\Users\kento\\My_Research\Data\\comp_sequence_np\\' + sequence_data + '\\' + competition_name + '\\'+ str(game_id) + '_1sthalf_' + str(main_team_id), comp_sequence_np)
+        if purpose != 'sequence':
+            np.save('C:\\Users\kento\\My_Research\Data\\comp_label_np\\' + label_data + '\\' + competition_name + '\\'+ str(game_id) + '_1sthalf_' + str(main_team_id), comp_label_np)
     # 後半
     else:
-        np.save('C:\\Users\kento\\OneDrive\\My_Research\Data\\comp_sequence_np\\' + competition_name + '\\'+ str(game_id) + '_2ndhalf_' + str(main_team_id), comp_sequence_np)
-        np.save('C:\\Users\kento\\OneDrive\\My_Research\Data\\comp_label_np\\' + competition_name + '\\'+ str(game_id) + '_2ndhalf_' + str(main_team_id), comp_label_np)
+        if purpose != 'label':
+            np.save('C:\\Users\kento\\My_Research\Data\\comp_sequence_np\\' + sequence_data + '\\' + competition_name + '\\'+ str(game_id) + '_2ndhalf_' + str(main_team_id), comp_sequence_np)
+        if purpose != 'sequence':
+            np.save('C:\\Users\kento\\My_Research\Data\\comp_label_np\\' + label_data + '\\' + competition_name + '\\'+ str(game_id) + '_2ndhalf_' + str(main_team_id), comp_label_np)
     
     # 戦術的行動の数
-    print(include_longcounter,include_shortcounter,include_opposition_half_possession,include_own_half_possession,include_counterpressing,include_highpressing,include_middlepressing)
+    # print(include_longcounter,include_shortcounter,include_opposition_half_possession,include_own_half_possession,include_counterpressing,include_highpressing,include_middlepressing)
 
 
 
