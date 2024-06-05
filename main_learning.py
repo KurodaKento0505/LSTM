@@ -25,6 +25,7 @@ import random
 import numpy as np
 
 from func_LSTM import LSTM
+from func_transform_data import transform
 
 '''
 from func_CNN import CNN
@@ -123,6 +124,8 @@ def main():
     if test != True:
         sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\all_sequence.npy")
         label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\all_label.npy", allow_pickle=True)
+
+        sequence_np = transform(sequence_np)
 
         print(sequence_np.shape, label_np.shape)
 
