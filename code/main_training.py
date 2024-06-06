@@ -25,6 +25,7 @@ import random
 import numpy as np
 
 from func_LSTM import LSTM
+from func_Transformer import Transformer
 from func_transform_data import transform
 
 '''
@@ -53,7 +54,7 @@ channel = 3
 label_data = 'tactical_action' # tactical_action, time_to_tactical_action
 
 # test か否か
-test = True
+test = False
 
 # val か否か
 val = False
@@ -122,14 +123,16 @@ def main():
     # numpy load
     # train
     if test != True:
-        sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\all_sequence.npy")
+        sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\transform_sequence.npy") # all or transform
         label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\all_label.npy", allow_pickle=True)
 
-        sequence_np = transform(sequence_np)
+        # sequence_np = transform(sequence_np)
+        # np.save("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\transform_sequence.npy", sequence_np)
 
         print(sequence_np.shape, label_np.shape)
 
-        LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val)
+        # LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val)
+        Transformer(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val)
         # CNN(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val)
     
     # test
@@ -144,6 +147,8 @@ def main():
                     sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_sequence_np\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_1sthalf_" + str(main_team_id) + ".npy")
                     label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_label_np\\" + label_data + "\\" + competition_name + "\\"+ str(game_id) + "_1sthalf_" + str(main_team_id) + ".npy", allow_pickle=True)
 
+                    sequence_np = transform(sequence_np)
+
                     outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val)
                     percent_calculate(outputs_list, labels_list, len_loader, test, number_of_tactical_action, make_graph, val, i)
 
@@ -151,6 +156,8 @@ def main():
                 else:
                     sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_sequence_np\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".npy")
                     label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_label_np\\" + label_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".npy", allow_pickle=True)
+
+                    sequence_np = transform(sequence_np)
 
                     outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val)
                     percent_calculate(outputs_list, labels_list, len_loader, test, number_of_tactical_action, make_graph, val, i)
