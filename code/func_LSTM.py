@@ -25,10 +25,12 @@ print(device)
 def LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val): 
 
 
+    ##################################################################
     batch_size = 512
     hidden_dim = 20
     epoch = 1000
     lr = 0.01
+    ##################################################################
 
 
     # slice する数を計算
