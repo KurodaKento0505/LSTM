@@ -22,13 +22,13 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(device)
 
 
-def LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val): 
+def LSTM(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val): 
 
 
     ##################################################################
-    batch_size = 512
+    batch_size = 2048
     hidden_dim = 20
-    epoch = 1000
+    epoch = 500
     lr = 0.01
     ##################################################################
 
@@ -80,7 +80,7 @@ def LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, m
     # only_x : * 1 + 2, x + y : * 2 + 3
     model = LSTMClassification(input_dim = dim_of_image, 
                             hidden_dim = hidden_dim, 
-                            target_size = number_of_tactical_action)
+                            target_size = num_tactical_action_per_training)
 
 
     PATH = './cifar_net.pth'
@@ -94,12 +94,12 @@ def LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, m
         model.load_state_dict(torch.load(PATH))
 
         if make_graph:
-            outputs_list, labels_list, len_loader = evaluate(model, graph_testloader, number_of_tactical_action)
+            outputs_list, labels_list, len_loader = evaluate(model, graph_testloader, num_tactical_action_per_training)
         else:
             if val:
-                outputs_list, labels_list, len_loader = evaluate(model, valloader, number_of_tactical_action)
+                outputs_list, labels_list, len_loader = evaluate(model, valloader, num_tactical_action_per_training)
             else:
-                outputs_list, labels_list, len_loader = evaluate(model, testloader, number_of_tactical_action)
+                outputs_list, labels_list, len_loader = evaluate(model, testloader, num_tactical_action_per_training)
             
         return outputs_list, labels_list, len_loader
 
@@ -132,7 +132,7 @@ class LSTMClassification(nn.Module):
 
 def train(model, n_epochs, trainloader, valloader, lr):
     model = model.to(device)
-    loss_function = nn.HuberLoss() # SmoothL1
+    loss_function = nn.HuberLoss() # SmoothL1, CrossEntropyLoss, HuberLoss
     optimizer = optim.SGD(model.parameters(), lr=lr)
 
     history = {
