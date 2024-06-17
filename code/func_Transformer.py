@@ -9,7 +9,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(device)
 
 
-def Transformer(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val):
+def Transformer(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name, dim_of_image, train, make_graph, val):
 
 
     ##################################################################
@@ -35,7 +35,7 @@ def Transformer(sequence_np, label_np, num_tactical_action_per_training, dim_of_
     print('train_t:', train_t.shape)
 
 
-    if test != True:
+    if train:
         dataset = torch.utils.data.TensorDataset(train_x, train_t)
 
         train_size = int(len(dataset) * 0.8) # train_size is 3000
@@ -54,11 +54,12 @@ def Transformer(sequence_np, label_np, num_tactical_action_per_training, dim_of_
         _, timestep, dimentions = first_batch[0].shape
 
         # モデルの構築
-        classifier = tisc.build_classifier(model_name="LSTM",
+        classifier = tisc.build_classifier(model_name="Transformer",
                                         timestep=timestep,
                                         dimentions=dimentions,
-                                        num_classes=num_tactical_action_per_training
-                                        )
+                                        num_classes=num_tactical_action_per_training,
+                                        tactical_action_name = tactical_action_name,
+                                        train_truth = True)
 
         # モデルの学習
         # epochsは150に設定していますが、各自で調整してください。
@@ -66,6 +67,7 @@ def Transformer(sequence_np, label_np, num_tactical_action_per_training, dim_of_
         # 学習後のモデルは"./tisc_output/(モデル名)/(実行した時間)/weights"ディレクトリに保存されます。
         classifier.train(epochs=epoch,
                         train_loader=trainloader,
+                        tactical_action_name = tactical_action_name,
                         val_loader=valloader,
                         lr = lr)
 
@@ -85,8 +87,9 @@ def Transformer(sequence_np, label_np, num_tactical_action_per_training, dim_of_
             classifier = tisc.build_classifier(model_name="Transformer",
                                             timestep=timestep,
                                             dimentions=dimentions,
-                                            num_classes=num_tactical_action_per_training
-                                            )
+                                            num_classes=num_tactical_action_per_training,
+                                            tactical_action_name = tactical_action_name,
+                                            train_truth = True)
 
 
             outputs_list, labels_list, len_loader = classifier.evaluate(graph_testloader)

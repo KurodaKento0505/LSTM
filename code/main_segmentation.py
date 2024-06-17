@@ -35,7 +35,7 @@ connect = False
 purpose = 'label'
 
 # kind_of_sequence
-kind_of_sequence = 'table'
+kind_of_sequence = 'heat_map'
 
 # heatmap
 grid_size_x = 60
@@ -47,18 +47,12 @@ num_player = 22
 # data_length
 data_length = 9
 
-label_data = 'time_to_tactical_action' # tactical_action, time_to_tactical_action
+label_data = 'time_to_AoD_and_TA' # tactical_action, time_to_tactical_action, AoD_and_time_to_TA
 ###################################################################################################################################################
 
 
 # data
-if kind_of_sequence == 'grid':
-
-    sequence_data = 'grid_' + str(grid_size_y) + '_' + str(grid_size_x)
-
-elif kind_of_sequence == 'table':
-
-    sequence_data = 'table_' + str(grid_size_y) + '_' + str(grid_size_x)
+sequence_data = kind_of_sequence + '_' + str(grid_size_y) + '_' + str(grid_size_x)
 
 
 # Create a dataframe with all games from UEFA Euro
@@ -67,6 +61,8 @@ df_games = SBL.games(competition_id, season_id).set_index("game_id")
 # 各戦術的行動の名前 
 if label_data != 'attack_or_defense':
     tactical_action_name_list = ['longcounter', 'shortcounter', 'opposition_half_possession', 'own_half_possession', 'counterpressing', 'highpressing', 'middlepressing']
+elif label_data == 'time_to_AoD_and_TA':
+    tactical_action_name_list = ['attack', 'defense', 'longcounter', 'shortcounter', 'opposition_half_possession', 'own_half_possession', 'counterpressing', 'highpressing', 'middlepressing']
 else:
     tactical_action_name_list = ['attack', 'defense']
 
@@ -247,6 +243,12 @@ def label_and_sequence_split(df_actions_half, main_team_id, game_id, half):
                     label_tactical_actions(df_in_play, main_team_id)
                     label_time_by_starting(df_in_play, main_team_id, tactical_action_name_list)
 
+                # 戦術的行動と攻守の開始時刻までの時間距離のラベル付け 
+                elif label_data == 'time_to_AoD_and_TA':
+                    label_attack_or_defense(df_in_play, main_team_id)
+                    label_tactical_actions(df_in_play, main_team_id)
+                    label_time_by_starting(df_in_play, main_team_id, tactical_action_name_list)
+
                 # 攻守のラベル付け
                 else:
                     label_attack_or_defense(df_in_play, main_team_id)
@@ -269,8 +271,10 @@ def label_and_sequence_split(df_actions_half, main_team_id, game_id, half):
                     
                     # from sequence to heatmap or table
                     # sequence_np が返ってくる
-                    # sequence_np = make_heatmap(df_sequence, data_length, grid_size_x, grid_size_y)
-                    sequence_np = make_table(df_sequence, data_length, grid_size_x, grid_size_y, num_player)
+                    if kind_of_sequence == 'table':
+                        sequence_np = make_table(df_sequence, data_length, grid_size_x, grid_size_y, num_player)
+                    else:
+                        sequence_np = make_heatmap(df_sequence, data_length, grid_size_x, grid_size_y)
 
                     # シーケンスをまとめる
                     # sequence_np_list.append(sequence_np)

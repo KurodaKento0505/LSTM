@@ -12,7 +12,7 @@ from PIL import Image
 ##########################################################################
 
 # ガウス分布使うか否か
-gause = False
+gause = True
 
 # channel
 channel = 1
@@ -155,6 +155,117 @@ def make_heatmap(df, data_length, grid_size_x, grid_size_y):
             sequence_np[i] = image_np
     
     return sequence_np
+
+
+
+def make_heatmap_from_table(sequence_np, new_grid_size_x, new_grid_size_y):
+
+    new_sequence_np = np.zeros((sequence_np.shape[0], sequence_np.shape[1], 3 + ((new_grid_size_y + 2) * (new_grid_size_x + 2)) * 2))
+
+    for i in range(sequence_np.shape[0]):
+
+        for j in range(sequence_np.shape[1]):
+
+            grid_teammate_np = np.zeros((new_grid_size_y + 2, new_grid_size_x + 2))
+            grid_opponent_np = np.zeros((new_grid_size_y + 2, new_grid_size_x + 2))
+
+            for k in range(sequence_np.shape[2]):
+
+                # time_seconds
+                if k == 0:
+                    new_sequence_np[i, j, k] = sequence_np[i, j, k]
+                # ball_x, ball_y
+                elif k < 3:
+                    new_sequence_np[i, j, k] = int(round(sequence_np[i, j, k] / (60 / new_grid_size_x)))
+
+                # teammate
+                elif 3 <= k <= 24:
+
+                    # x座標
+                    if k % 2 == 1:
+
+                        # 外れ値
+                        if sequence_np[i, j, k] == -1.0:
+                            continue
+
+                        teammate_x = int(round(sequence_np[i, j, k] / (60 / new_grid_size_x)))
+                    
+                    # y座標
+                    else:
+
+                        # 外れ値
+                        if sequence_np[i, j, k] == -1.0:
+                            continue
+
+                        teammate_y = int(round(sequence_np[i, j, k] / (60 / new_grid_size_x)))
+
+                        if gause == True:
+                            grid_teammate_np[teammate_y, teammate_x] = 1.0
+                            grid_teammate_np[teammate_y - 1, teammate_x] = 0.5
+                            grid_teammate_np[teammate_y + 1, teammate_x] = 0.5
+                            grid_teammate_np[teammate_y, teammate_x - 1] = 0.5
+                            grid_teammate_np[teammate_y, teammate_x + 1] = 0.5
+                            grid_teammate_np[teammate_y - 1, teammate_x - 1] = 0.25
+                            grid_teammate_np[teammate_y - 1, teammate_x + 1] = 0.25
+                            grid_teammate_np[teammate_y + 1, teammate_x - 1] = 0.25
+                            grid_teammate_np[teammate_y + 1, teammate_x + 1] = 0.25
+                        else:
+                            grid_teammate_np[teammate_y, teammate_x] = 1.0
+
+                # opponent
+                else:
+                    
+                    # x座標
+                    if k % 2 == 1:
+
+                        # 外れ値
+                        if sequence_np[i, j, k] == -1.0:
+                            continue
+
+                        opponent_x = int(round(sequence_np[i, j, k] / (60 / new_grid_size_x)))
+                    
+                    # y座標
+                    else:
+
+                        # 外れ値
+                        if sequence_np[i, j, k] == -1.0:
+                            continue
+
+                        opponent_y = int(round(sequence_np[i, j, k] / (60 / new_grid_size_x)))
+
+                        if gause == True:
+                            grid_opponent_np[opponent_y, opponent_x] = 1.0
+                            grid_opponent_np[opponent_y - 1, opponent_x] = 0.5
+                            grid_opponent_np[opponent_y + 1, opponent_x] = 0.5
+                            grid_opponent_np[opponent_y, opponent_x - 1] = 0.5
+                            grid_opponent_np[opponent_y, opponent_x + 1] = 0.5
+                            grid_opponent_np[opponent_y - 1, opponent_x - 1] = 0.25
+                            grid_opponent_np[opponent_y - 1, opponent_x + 1] = 0.25
+                            grid_opponent_np[opponent_y + 1, opponent_x - 1] = 0.25
+                            grid_opponent_np[opponent_y + 1, opponent_x + 1] = 0.25
+                        else:
+                            grid_opponent_np[opponent_y, opponent_x] = 1.0
+
+            '''grid_np = grid_teammate_np + grid_opponent_np
+            plt.imshow(grid_np, cmap = "gray")
+            plt.show()'''
+            
+            # くっつける
+            for l in range(new_grid_size_x + 2):
+
+                for m in range(new_grid_size_y + 2):
+
+                    # teammate
+                    new_sequence_np[i, j, l * (new_grid_size_y + 2) + m + 3] = grid_teammate_np[m, l]
+
+                    # opponent
+                    new_sequence_np[i, j, l * (new_grid_size_y + 2) + m + 3 + (new_grid_size_y + 2) * (new_grid_size_x + 2)] = grid_opponent_np[m, l]
+
+        if i % 100 == 0:
+            print(i)
+
+    return new_sequence_np
+
 
 
 '''# PILライブラリを使って画像を表示する

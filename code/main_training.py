@@ -28,6 +28,7 @@ from func_LSTM import LSTM
 from func_Transformer import Transformer
 from func_transform_data import transform
 from func_choice_data import choice_data
+from func_heatmap import make_heatmap_from_table
 
 '''
 from func_CNN import CNN
@@ -45,11 +46,11 @@ from LSTM_percent import count_player
 data_length = 9
 
 # grid_size
-grid_size_x = 60
-grid_size_y = 40
+grid_size_x = 30
+grid_size_y = 20
 
 # channel
-channel = 3
+channel = 2
 
 # the number of players
 num_player = 22
@@ -58,16 +59,30 @@ num_player = 22
 label_data = 'time_to_tactical_action' # tactical_action, time_to_tactical_action
 
 # kind_of_sequence
-kind_of_sequence = 'table'
+kind_of_sequence = 'grid'
 
 # model
-model = 'LSTM' # LSTM or Transformer
+model = 'Transformer' # LSTM or Transformer
 
 # tactical_action_label
 tactical_action_label = 0
 
+# 一回の学習で認識する戦術的行動の数
+num_tactical_action_per_training = 1
+
 # test か否か
-test = True
+train = False
+
+# choice_data
+choice = False
+max_num_no_tactical_action = 1000
+max_num_1_tactical_action = 1000
+
+# make_heatmap_truth
+make_heatmap_truth = False
+new_grid_size_x = 30
+new_grid_size_y = 20
+
 # val か否か
 val = False
 
@@ -78,21 +93,25 @@ main_team_id = 860
 
 ##########################################################################################################################################
 
-if test:
-    competition_name = "UEFA_Women's_Euro_2022" # UEFA_Women's_Euro_2022, Women's_World_Cup_2023
-else:
+if train:
     competition_name = "FIFA_World_Cup_2022_and_UEFA_Euro_2020" # FIFA_World_Cup_2022, UEFA_Euro_2020, _and_UEFA_Euro_2020
     other_competition_name = "UEFA_Euro_2020"
+elif choice:
+    competition_name = "FIFA_World_Cup_2022_and_UEFA_Euro_2020"
+elif make_heatmap_truth:
+    competition_name = "UEFA_Women's_Euro_2022"
+else:
+    competition_name = "UEFA_Women's_Euro_2022" # UEFA_Women's_Euro_2022, Women's_World_Cup_2023
 
 print(competition_name)
 
 # data
 if kind_of_sequence == 'grid':
 
-    sequence_data = 'grid_' + str(grid_size_y) + '_' + str(grid_size_x)
+    sequence_data = 'grid_' + str(grid_size_y) + '_' + str(grid_size_x) + '_and_ball'
     
     # input size
-    dim_of_image = (grid_size_y + 2) * (grid_size_x + 2) * channel
+    dim_of_image = ((grid_size_y + 2) * (grid_size_x + 2)) * channel + 3
 
 elif kind_of_sequence == 'table':
 
@@ -112,7 +131,6 @@ else:
 
 # 戦術的行動の数
 num_tactical_action = len(tactical_action_name_list)
-num_tactical_action_per_training = 1
 print(tactical_action_name_list, num_tactical_action)
 
 
@@ -120,6 +138,7 @@ print(tactical_action_name_list, num_tactical_action)
 def main():
 
 
+    global sequence_data
     # シーケンスとラベルをそれぞれ結合(画像ver)
     # connect_data(test, competition_name)
     
@@ -144,19 +163,38 @@ def main():
     # make graph
     # make_graph(dir_graph)
 
+    # 最終的に全ての戦術的行動を格納する df
+    df_all_tactical_action_1sthalf = pd.DataFrame(columns = ['time_seconds'])
+    df_all_tactical_action_2ndhalf = pd.DataFrame(columns = ['time_seconds'])
 
-    # num_tactical_action でループ
-    for i in range(num_tactical_action):
 
-        # numpy load
-        # train
-        if test != True:
-            if 0 <= tactical_action_label <= 6:
+    # numpy load
+    # train
+    if train:
+        
+        # 各戦術的行動を独立に学習
+        if num_tactical_action_per_training == 1:
+        
+            # num_tactical_action でループ
+            for i in range(num_tactical_action):
+
+                print('\n')
+                print(tactical_action_name_list[i])
+
                 sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\choice_" + tactical_action_name_list[i] + "_sequence.npy") # all or transform or choice
                 label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\choice_" + tactical_action_name_list[i] + "_label.npy", allow_pickle=True) # all or transform or choice
-            else:
-                sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\choice_sequence.npy") # all or transform or choice
-                label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\choice_label.npy", allow_pickle=True) # all or transform or choice
+
+                print(sequence_np.shape, label_np.shape)
+
+                if model == 'LSTM':
+                    LSTM(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name_list[i], dim_of_image, train, make_graph, val)
+                elif model == 'Transformer':
+                    Transformer(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name_list[i], dim_of_image, train, make_graph, val)
+        
+        # 今はまだ全ての戦術的行動を一気に学習することはできない
+        else:
+            sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\choice_sequence.npy") # all or transform or choice
+            label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\choice_label.npy", allow_pickle=True) # all or transform or choice
             # other_sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + other_competition_name + "\\all_sequence.npy") # all or transform or choice
             # other_label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + other_competition_name + "\\all_label.npy", allow_pickle=True)
 
@@ -166,66 +204,135 @@ def main():
             # sequence_np = transform(sequence_np)
             # np.save("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\transform_sequence.npy", sequence_np)
 
-            # choice_data(competition_name, sequence_np, label_np, sequence_data, label_data, grid_size_y, grid_size_x, data_length, num_player, num_tactical_action, tactical_action_label, tactical_action_name_list)
-
             print(sequence_np.shape, label_np.shape)
 
             if model == 'LSTM':
-                LSTM(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val)
+                LSTM(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name_list, dim_of_image, train, make_graph, val)
             elif model == 'Transformer':
-                Transformer(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val)
+                Transformer(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name_list, dim_of_image, train, make_graph, val)
             # CNN(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val)
-        
-        # test
-        else:
-            # make_graph
-            if make_graph:
+    
+    elif choice:
+
+        # num_tactical_action でループ
+        for i in range(num_tactical_action):
+
+            '''if i < 5:
+                continue'''
+
+            print(tactical_action_name_list[i])
+
+            sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\choice_sequence.npy") # all or transform or choice
+            label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\choice_label.npy", allow_pickle=True)
+
+            choice_data(competition_name, sequence_np, label_np, sequence_data, label_data, i, tactical_action_name_list, max_num_no_tactical_action, max_num_1_tactical_action)
+
+    elif make_heatmap_truth:
+
+        '''# num_tactical_action でループ
+        for i in range(num_tactical_action):
+
+            print(tactical_action_name_list[i])
+
+            sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\choice_" + tactical_action_name_list[i] + "_sequence.npy")
+            label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\choice_" + tactical_action_name_list[i] + "_label.npy", allow_pickle=True)
+
+            new_sequence_np = make_heatmap_from_table(sequence_np, new_grid_size_x, new_grid_size_y)
+
+            new_sequence_data = 'grid_' + str(new_grid_size_y) + '_' + str(new_grid_size_x) + '_and_ball'
+            np.save("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + new_sequence_data + "\\" + competition_name + "\\choice_" + tactical_action_name_list[i] + "_sequence.npy", new_sequence_np)
+        '''
+
+        sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_sequence_np\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".npy")
+        label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_label_np\\" + label_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".npy", allow_pickle=True)
+
+        new_sequence_np = make_heatmap_from_table(sequence_np, new_grid_size_x, new_grid_size_y)
+
+        new_sequence_data = 'grid_' + str(new_grid_size_y) + '_' + str(new_grid_size_x) + '_and_ball'
+        np.save("C:\\Users\\kento\\My_Research\\Data\\comp_sequence_np\\" + new_sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".npy", new_sequence_np)
+
+    # test
+    else:
+        # make_graph
+        if make_graph:
+            
+            # num_tactical_action でループ
+            for i in range(num_tactical_action):
+
+                print('\n')
+                print(tactical_action_name_list[i])
                 
-                for i in range(2):
+                for j in range(2):
 
                     # 1sthalf
-                    if i == 0:
+                    if j == 0:
                         sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_sequence_np\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_1sthalf_" + str(main_team_id) + ".npy")
                         label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_label_np\\" + label_data + "\\" + competition_name + "\\"+ str(game_id) + "_1sthalf_" + str(main_team_id) + ".npy", allow_pickle=True)
 
+                        # labl_np から一つの戦術的行動のみを選択
+                        label_np = label_np[:, i]
+
                         # sequence_np = transform(sequence_np)
 
-                        if model == 'LSTM':
-                            outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val)
-                        elif model == 'Transformer':
-                            outputs_list, labels_list, len_loader = Transformer(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val)
-                        
-                        df_outcome = percent_calculate(outputs_list, labels_list, len_loader, test, num_tactical_action_per_training, tactical_action_name_list[i], make_graph, val, i)
+                        df_all_tactical_action_1sthalf[tactical_action_name_list[i]] = 0.0
+                        df_all_tactical_action_1sthalf['output_' + tactical_action_name_list[i]] = 0.0
 
-                        ###################################################################### df_oucome を繋げる ##################################################################
+                        if model == 'LSTM':
+                            outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name_list[i], dim_of_image, train, make_graph, val)
+                        elif model == 'Transformer':
+                            outputs_list, labels_list, len_loader = Transformer(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name_list[i], dim_of_image, train, make_graph, val)
+                        
+                        df_outcome = percent_calculate(outputs_list, labels_list, len_loader, train, num_tactical_action_per_training, tactical_action_name_list[i], make_graph, val, j)
+
+                        # df_oucome を df_all_tactical_action に格納する
+                        df_all_tactical_action_1sthalf[tactical_action_name_list[i]] = df_outcome[tactical_action_name_list[i]]
+                        df_all_tactical_action_1sthalf['output_' + tactical_action_name_list[i]] = df_outcome['output_' + tactical_action_name_list[i]]
+                        if i == 0:
+                            df_all_tactical_action_1sthalf['time_seconds'] = df_outcome['time_seconds']
 
                     # 2ndhalf
                     else:
                         sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_sequence_np\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".npy")
                         label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\comp_label_np\\" + label_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".npy", allow_pickle=True)
 
+                        # labl_np から一つの戦術的行動のみを選択
+                        label_np = label_np[:, i]
+
                         # sequence_np = transform(sequence_np)
 
+                        df_all_tactical_action_2ndhalf[tactical_action_name_list[i]] = 0.0
+                        df_all_tactical_action_2ndhalf['output_' + tactical_action_name_list[i]] = 0.0
+
                         if model == 'LSTM':
-                            outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val)
+                            outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name_list[i], dim_of_image, train, make_graph, val)
                         elif model == 'Transformer':
-                            outputs_list, labels_list, len_loader = Transformer(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val)
+                            outputs_list, labels_list, len_loader = Transformer(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name_list[i], dim_of_image, train, make_graph, val)
                         
-                        df_outcome = percent_calculate(outputs_list, labels_list, len_loader, test, num_tactical_action_per_training, tactical_action_name_list[i], make_graph, val, i)
+                        df_outcome = percent_calculate(outputs_list, labels_list, len_loader, train, num_tactical_action_per_training, tactical_action_name_list[i], make_graph, val, j)
 
-            # random_test_data
-            else:
+                        # df_oucome を df_all_tactical_action に格納する
+                        df_all_tactical_action_2ndhalf[tactical_action_name_list[i]] = df_outcome[tactical_action_name_list[i]]
+                        df_all_tactical_action_2ndhalf['output_' + tactical_action_name_list[i]] = df_outcome['output_' + tactical_action_name_list[i]]
+                        if i == 0:
+                            df_all_tactical_action_2ndhalf['time_seconds'] = df_outcome['time_seconds']
                 
-                sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\all_sequence.npy")
-                label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\all_sequence.npy")
+            df_all_tactical_action_1sthalf.to_csv("C:\\Users\\kento\\My_Research\\Data\\df_outcome\\" + label_data + "\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_1sthalf_" + str(main_team_id) + ".csv")
+            df_all_tactical_action_2ndhalf.to_csv("C:\\Users\\kento\\My_Research\\Data\\df_outcome\\" + label_data + "\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".csv")
 
-                outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, test, make_graph, val)
-                percent_calculate(outputs_list, labels_list, len_loader, test, num_tactical_action_per_training, make_graph, val)
+        # random_test_data
+        else:
+            
+            sequence_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\all_sequence.npy")
+            label_np = np.load("C:\\Users\\kento\\My_Research\\Data\\all_label_np\\" + label_data + "\\" + competition_name + "\\all_sequence.npy")
+
+            outputs_list, labels_list, len_loader = LSTM(sequence_np, label_np, num_tactical_action_per_training, dim_of_image, train, make_graph, val)
+            percent_calculate(outputs_list, labels_list, len_loader, train, num_tactical_action_per_training, make_graph, val)
+
 
 
 
 # modelの評価
-def percent_calculate(outputs, labels, length, test, num_tactical_action_per_training, tactical_action_name, make_graph, val, half):
+def percent_calculate(outputs, labels, length, train, num_tactical_action_per_training, tactical_action_name, make_graph, val, half):
 
     length = len(outputs)
     outputs_np = np.array(outputs)
@@ -233,8 +340,10 @@ def percent_calculate(outputs, labels, length, test, num_tactical_action_per_tra
 
     print('outputs_np:', outputs_np.shape)
 
+    print(tactical_action_name, num_tactical_action_per_training)
 
-    if test:
+
+    if train != True:
 
         '''# optunaによる閾値決定が終わったらメモした値を代入
         # threhold を格納
@@ -287,7 +396,7 @@ def percent_calculate(outputs, labels, length, test, num_tactical_action_per_tra
                             if num_tactical_action_per_training == 1:
                                 df_outcome.loc[count_label, tactical_action_name] = df_half.loc[i, 'time_to_' + tactical_action_name] 
                             else:
-                                df_outcome.loc[count_label, tactical_action_name] = df_half.loc[i, 'time_to_' + tactical_action_name] 
+                                df_outcome.loc[count_label, tactical_action_name[j]] = df_half.loc[i, 'time_to_' + tactical_action_name[j]] 
                         else:
                             if num_tactical_action_per_training == 1:
                                 df_outcome.loc[count_label, tactical_action_name] = df_half.loc[i, tactical_action_name] 
@@ -301,14 +410,14 @@ def percent_calculate(outputs, labels, length, test, num_tactical_action_per_tra
 
             # num_tactical_action_per_training = 1 のとき一つずつリターン
             if num_tactical_action_per_training == 1:
-                return df_outcome, half
+                return df_outcome
             
             # 1sthalf
-            if half == 0:
+            '''if half == 0:
                 df_outcome.to_csv("C:\\Users\\kento\\My_Research\\Data\\df_outcome\\" + label_data + "\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_1sthalf_" + str(main_team_id) + ".csv")
             # 2ndhalf
             else:
-                df_outcome.to_csv("C:\\Users\\kento\\My_Research\\Data\\df_outcome\\" + label_data + "\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".csv")
+                df_outcome.to_csv("C:\\Users\\kento\\My_Research\\Data\\df_outcome\\" + label_data + "\\" + sequence_data + "\\" + competition_name + "\\"+ str(game_id) + "_2ndhalf_" + str(main_team_id) + ".csv")'''
 
 
             '''# 各戦術的行動の正解データの数
