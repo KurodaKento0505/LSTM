@@ -30,9 +30,11 @@ def label_time_by_starting(df_in_play, main_team_id, tactical_action_name_list):
 
                     # 開始時刻までの時間を挿入
                     # -20 より小さい場合は -20
-                    if time_to_start < -20:
+                    if time_to_start < -10:
                         pass
+                    elif time_to_start > 10:
+                        df_in_play.loc[k, 'time_to_' + tactical_action_name_list[i]] = 1.0
                     else:
-                        df_in_play.loc[k, 'time_to_' + tactical_action_name_list[i]] = int(time_to_start)
+                        df_in_play.loc[k, 'time_to_' + tactical_action_name_list[i]] = float(time_to_start / 10)
 
                     next_j = k

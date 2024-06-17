@@ -22,13 +22,13 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(device)
 
 
-def LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, make_graph, val): 
+def LSTM(sequence_np, label_np, num_tactical_action_per_training, tactical_action_name, dim_of_image, train_truth, make_graph, val): 
 
 
     ##################################################################
-    batch_size = 512
+    batch_size = 2048
     hidden_dim = 20
-    epoch = 1000
+    epoch = 500
     lr = 0.01
     ##################################################################
 
@@ -47,7 +47,7 @@ def LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, m
     print('train_t:', train_t.shape)
 
 
-    if test != True:
+    if train_truth:
         dataset = torch.utils.data.TensorDataset(train_x, train_t)
 
         train_size = int(len(dataset) * 0.8) # train_size is 3000
@@ -80,26 +80,26 @@ def LSTM(sequence_np, label_np, number_of_tactical_action, dim_of_image, test, m
     # only_x : * 1 + 2, x + y : * 2 + 3
     model = LSTMClassification(input_dim = dim_of_image, 
                             hidden_dim = hidden_dim, 
-                            target_size = number_of_tactical_action)
+                            target_size = num_tactical_action_per_training)
 
 
-    PATH = './cifar_net.pth'
+    PATH = './tisc_output/LSTM/train_model/' + tactical_action_name + '_net.pth'
 
-    if test != True:
+    if train_truth:
         train(model, epoch, trainloader, valloader, lr)
         torch.save(model.state_dict(), PATH)
-        evaluate(model, testloader, test)
+        evaluate(model, testloader, train_truth)
 
     else:
-        model.load_state_dict(torch.load(PATH))
+        model.load_state_dict(torch.load(PATH), strict=False)
 
         if make_graph:
-            outputs_list, labels_list, len_loader = evaluate(model, graph_testloader, number_of_tactical_action)
+            outputs_list, labels_list, len_loader = evaluate(model, graph_testloader, num_tactical_action_per_training)
         else:
             if val:
-                outputs_list, labels_list, len_loader = evaluate(model, valloader, number_of_tactical_action)
+                outputs_list, labels_list, len_loader = evaluate(model, valloader, num_tactical_action_per_training)
             else:
-                outputs_list, labels_list, len_loader = evaluate(model, testloader, number_of_tactical_action)
+                outputs_list, labels_list, len_loader = evaluate(model, testloader, num_tactical_action_per_training)
             
         return outputs_list, labels_list, len_loader
 
@@ -132,7 +132,7 @@ class LSTMClassification(nn.Module):
 
 def train(model, n_epochs, trainloader, valloader, lr):
     model = model.to(device)
-    loss_function = nn.HuberLoss() # SmoothL1
+    loss_function = nn.HuberLoss() # SmoothL1, CrossEntropyLoss, HuberLoss
     optimizer = optim.SGD(model.parameters(), lr=lr)
 
     history = {
