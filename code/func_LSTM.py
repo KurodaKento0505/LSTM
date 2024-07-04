@@ -29,7 +29,7 @@ def LSTM(sequence_np, label_np, num_tactical_action_per_training, tactical_actio
     batch_size = 2048
     hidden_dim = 20
     epoch = 500
-    lr = 0.01
+    lr = 0.001
     ##################################################################
 
 

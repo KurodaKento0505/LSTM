@@ -313,15 +313,15 @@ def label_and_sequence_split(df_actions_half, main_team_id, game_id, half):
     # 前半
     if half == 1:
         if purpose != 'label':
-            np.save('C:\\Users\kento\\My_Research\Data\\comp_sequence_np\\' + sequence_data + '\\' + competition_name + '\\'+ str(game_id) + '_1sthalf_' + str(main_team_id), comp_sequence_np)
+            np.save('C:\\Users\kento\\My_Research\\Data\\comp_sequence_np\\' + sequence_data + '\\' + competition_name + '\\'+ str(game_id) + '_1sthalf_' + str(main_team_id), comp_sequence_np)
         if purpose != 'sequence':
-            np.save('C:\\Users\kento\\My_Research\Data\\comp_label_np\\' + label_data + '\\' + competition_name + '\\'+ str(game_id) + '_1sthalf_' + str(main_team_id), comp_label_np)
+            np.save('C:\\Users\kento\\My_Research\\Data\\comp_label_np\\' + label_data + '\\' + competition_name + '\\'+ str(game_id) + '_1sthalf_' + str(main_team_id), comp_label_np)
     # 後半
     else:
         if purpose != 'label':
-            np.save('C:\\Users\kento\\My_Research\Data\\comp_sequence_np\\' + sequence_data + '\\' + competition_name + '\\'+ str(game_id) + '_2ndhalf_' + str(main_team_id), comp_sequence_np)
+            np.save('C:\\Users\kento\\My_Research\\Data\\comp_sequence_np\\' + sequence_data + '\\' + competition_name + '\\'+ str(game_id) + '_2ndhalf_' + str(main_team_id), comp_sequence_np)
         if purpose != 'sequence':
-            np.save('C:\\Users\kento\\My_Research\Data\\comp_label_np\\' + label_data + '\\' + competition_name + '\\'+ str(game_id) + '_2ndhalf_' + str(main_team_id), comp_label_np)
+            np.save('C:\\Users\kento\\My_Research\\Data\\comp_label_np\\' + label_data + '\\' + competition_name + '\\'+ str(game_id) + '_2ndhalf_' + str(main_team_id), comp_label_np)
     
     # 戦術的行動の数
     # print(include_longcounter,include_shortcounter,include_opposition_half_possession,include_own_half_possession,include_counterpressing,include_highpressing,include_middlepressing)
