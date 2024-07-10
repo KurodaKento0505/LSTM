@@ -15,11 +15,11 @@ from googleapiclient.http import MediaIoBaseDownload
 # Google Drive APIのスコープ
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
-tactical_action_name_list = ['longcounter', 'shortcounter', 'opposition_half_possession', 'own_half_possession', 'counterpressing', 'highpressing', 'middlepressing']
+tactical_action_name_list = ['longcounter', 'shortcounter', 'opposition_half_possession', 'own_half_possession', 'counterpressing', 'highpressing', 'middlepressing', 'all_tactical_action']
 num_tactical_action = len(tactical_action_name_list)
 
 
-def skillcorner_download(a, train, test_data):
+def skillcorner_download(a, train, data):
 
 
     creds = authenticate()
@@ -40,10 +40,10 @@ def skillcorner_download(a, train, test_data):
             print('No label_half_np files found in folder.')
             return
 
-        tactical_action_name = tactical_action_name_list[a]
+        # tactical_action_name = tactical_action_name_list[a]
 
-        tactical_action_sequence_np_file_name = tactical_action_name + '_sequence_np.npy'
-        tactical_action_label_np_file_name = tactical_action_name + '_label_np.npy'
+        tactical_action_sequence_np_file_name = data + '_sequence_np.npy' # transition_
+        tactical_action_label_np_file_name = data + '_label_np.npy' ######################################################## label の種類変える ###########################################################
 
         sequence_np_file = find_same_match_file(tactical_action_sequence_np_files, tactical_action_sequence_np_file_name)
         label_np_file = find_same_match_file(tactical_action_label_np_files, tactical_action_label_np_file_name)
@@ -63,8 +63,8 @@ def skillcorner_download(a, train, test_data):
             print('No sequence_half_np files found in folder.')
             return
         
-        test_sequence_np_file_name = test_data + '_sequence.np'
-        test_label_np_file_name = test_data + '_label.np'
+        test_sequence_np_file_name = data + 'sequence_np.np'
+        test_label_np_file_name = data + 'label_np.np'
 
         sequence_np_file = find_same_match_file(test_np_files, test_sequence_np_file_name)
         label_np_file = find_same_match_file(test_np_files, test_label_np_file_name)

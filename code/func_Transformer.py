@@ -15,7 +15,7 @@ def Transformer(sequence_np, label_np, num_tactical_action_per_training, tactica
     ##################################################################
     batch_size = 2048
     hidden_dim = 20
-    epoch = 100
+    epoch = 1000
     lr = 0.01
     ##################################################################
 
