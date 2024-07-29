@@ -70,7 +70,7 @@ model = 'LSTM' # LSTM or Transformer
 tactical_action_label = 0
 
 # 一回の学習で認識する戦術的行動の数
-num_tactical_action_per_training = 14
+num_tactical_action_per_training = 16
 
 # test か否か
 train = False
@@ -92,7 +92,7 @@ val = False
 make_graph = True
 statsbomb_game_id = 3835331
 main_team_id = 860
-skillcorner_game_id = 1498966
+skillcorner_game_id = 1024083
 which_team = '2nd' # 1st, 2nd
 
 ##########################################################################################################################################
@@ -129,7 +129,7 @@ print(sequence_data, label_data)
 
 # 各戦術的行動の名前 
 if label_data != 'attack_or_defense':
-    tactical_action_name_list = ['1_longcounter', '1_shortcounter', '1_opposition_half_possession', '1_own_half_possession', '1_counterpressing', '1_highpressing', '1_middlepressing', '2_longcounter', '2_shortcounter', '2_opposition_half_possession', '2_own_half_possession', '2_counterpressing', '2_highpressing', '2_middlepressing']
+    tactical_action_name_list = ['1_longcounter', '1_shortcounter', '1_opposition_half_possession', '1_own_half_possession', '1_counterpressing', '1_highpressing', '1_middlepressing', '1_block', '2_longcounter', '2_shortcounter', '2_opposition_half_possession', '2_own_half_possession', '2_counterpressing', '2_highpressing', '2_middlepressing', '2_block']
 else:
     tactical_action_name_list = ['attack', 'defense']
 
@@ -213,16 +213,16 @@ def main():
             # sequence_np = transform(sequence_np)
             # np.save("C:\\Users\\kento\\My_Research\\Data\\all_sequence_np\\" + sequence_data + "\\" + competition_name + "\\transform_sequence.npy", sequence_np)
 
-            sequence_np, label_np = skillcorner_download(7, train, data = 'both_team_all_tactical_action_0_or_1')
+            sequence_np, label_np = skillcorner_download(7, train, data = 'both_team_all_tactical_action_0_or_1') # _0_or_1
 
             train_label_np = label_np[:, 1:]
 
             print(sequence_np.shape, label_np.shape)
 
             if model == 'LSTM':
-                LSTM(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val) # both_team_
+                LSTM(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val) # both_team_, _0_or_1
             elif model == 'Transformer':
-                Transformer(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val) # both_team_
+                Transformer(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val) # both_team_, _0_or_1
             # CNN(sequence_np, label_np, number_of_player, number_of_tactical_action, test, make_graph, val)
     
     elif choice:
@@ -356,15 +356,17 @@ def main():
 
                         # sequence_np = transform(sequence_np)
 
+                        # _0_or_1
                         if model == 'LSTM':
-                            outputs_list, labels_list, len_loader = LSTM(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val) # both_team_all_tactical_action or all_tactical_action
+                            outputs_list, labels_list, len_loader = LSTM(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val) # both_team_all_tactical_action or all_tactical_action, _0_or_1
                         elif model == 'Transformer':
-                            outputs_list, labels_list, len_loader = Transformer(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val)
+                            outputs_list, labels_list, len_loader = Transformer(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val) # _0_or_1
                         
-                        df_outcome = percent_calculate(outputs_list, label_np, len_loader, train, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', 7, make_graph, val, j) # labels_list
+                        df_outcome = percent_calculate(outputs_list, label_np, len_loader, train, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', 7, make_graph, val, j) # labels_list, _0_or_1
 
                     # 2ndhalf
                     else:
+                        break
                         print('2nd half')
 
                         # test_data = str(skillcorner_game_id) + '_2_' + which_team + '_team'
@@ -374,12 +376,13 @@ def main():
 
                         # sequence_np = transform(sequence_np)
 
+                        # _0_or_1
                         if model == 'LSTM':
-                            outputs_list, labels_list, len_loader = LSTM(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val)
+                            outputs_list, labels_list, len_loader = LSTM(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action', dim_of_image, train, make_graph, val)
                         elif model == 'Transformer':
-                            outputs_list, labels_list, len_loader = Transformer(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', dim_of_image, train, make_graph, val)
+                            outputs_list, labels_list, len_loader = Transformer(sequence_np, train_label_np, num_tactical_action_per_training, 'both_team_all_tactical_action', dim_of_image, train, make_graph, val)
                         
-                        df_outcome = percent_calculate(outputs_list, label_np, len_loader, train, num_tactical_action_per_training, 'both_team_all_tactical_action_0_or_1', 7, make_graph, val, j) # labels_list
+                        df_outcome = percent_calculate(outputs_list, label_np, len_loader, train, num_tactical_action_per_training, 'both_team_all_tactical_action', 7, make_graph, val, j) # labels_list
 
                     df_outcome.to_csv("C:\\Users\\kento\\My_Research\\skillcorner\\" + label_data + "\\" + sequence_data + "\\" + test_data + "_" + current_datetime + ".csv")
 

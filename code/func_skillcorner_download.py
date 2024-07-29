@@ -63,8 +63,8 @@ def skillcorner_download(a, train, data):
             print('No sequence_half_np files found in folder.')
             return
         
-        test_sequence_np_file_name = data + 'sequence_np.np'
-        test_label_np_file_name = data + 'label_np.np'
+        test_sequence_np_file_name = data + '_sequence_np.np'
+        test_label_np_file_name = data + '_label_np.np'
 
         sequence_np_file = find_same_match_file(test_np_files, test_sequence_np_file_name)
         label_np_file = find_same_match_file(test_np_files, test_label_np_file_name)
