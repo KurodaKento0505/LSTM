@@ -8,6 +8,10 @@ __pycache__/
 *.so
 
 *.json
+*.pickle
+pretrained_model/
+fine_tuned_model/
+outputs/
 
 # Distribution / packaging
 .Python
