@@ -1,1 +1,1 @@
-# TACTICAL ACTIONS RECOGNITION WITH STATSBOMB
+# Recognition of Tactical Actions using LSTM
