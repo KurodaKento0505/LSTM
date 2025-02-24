@@ -24,7 +24,6 @@ print(device)
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--pretrained_model')
-    parser.add_argument('--fine_tuned_model')
     return parser.parse_args()
 
 
@@ -33,7 +32,6 @@ def main():
     args = parse_arguments()
 
     pretrained_model_path = args.pretrained_model
-    fine_tuned_model_path = args.fine_tuned_model
 
     # the number of players
     num_player = 22
@@ -49,8 +47,7 @@ def main():
     tactical_action_name_list = ['Build up 1', 'Progression 1', 'Final third 1', 'Counter-attack 1', 'High press 1', 'Mid block 1', 'Low block 1', 'Counter-press 1', 'Recovery 1', 'Build up 2', 'Progression 2', 'Final third 2', 'Counter-attack 2', 'High press 2', 'Mid block 2', 'Low block 2', 'Counter-press 2', 'Recovery 2']
 
     # numpy load
-    sequence_np, label_np = googledrive_download(bepro=True) # _0_or_1, 
-    print(sequence_np)
+    sequence_np, label_np = googledrive_download() # _0_or_1, 
     print(sequence_np.shape, label_np.shape)
 
     label_np = label_np # [:, 1:]
@@ -59,52 +56,60 @@ def main():
 
     # モデルを定義
     model = LSTMClassification(input_dim=input_dim, hidden_dim=hidden_dim, target_size=target_size)
+
+    history, model = train(train_loader, val_loader, test_loader, model, num_epochs, lr)
+    torch.save(model.state_dict(), pretrained_model_path)
+
+
+def train(train_loader, val_loader, test_loader, model, num_epochs, lr):
     
-    # 学習済みモデルのロード
-    model.load_state_dict(torch.load(pretrained_model_path), strict=False)
-
-    model = fine_tuning(train_loader, val_loader, test_loader, model, num_epochs, lr)
-    torch.save(model.state_dict(), fine_tuned_model_path)
-
-
-def fine_tuning(train_loader, val_loader, test_loader, model, num_epochs, lr):
-    
-    # 最適化手法と損失関数の定義
     model = model.to(device)
-    loss_function = nn.HuberLoss()
+    loss_function = nn.HuberLoss() # SmoothL1, CrossEntropyLoss, HuberLoss
     optimizer = optim.SGD(model.parameters(), lr=lr)
 
-    # ファインチューニング
+    history = {
+        'loss': []
+    }
     for epoch in range(num_epochs):
         model.train()
         train_losses = []
-        
-        for inputs, labels in train_loader:
+        val_losses = []
+
+        for i, data in enumerate(train_loader, 0):
+            inputs, labels = data
             inputs, labels = inputs.to(device), labels.to(device)
             labels = labels.long()
-            
-            optimizer.zero_grad()
-            predictions = model(inputs)
-            loss = loss_function(predictions, labels.float())
-            loss.backward()
-            optimizer.step()
-            
-            train_losses.append(loss.item())
 
-        # 検証
+            model.zero_grad()
+            tag_scores = model(inputs)
+            # labels = labels.unsqueeze(1)
+            
+            train_loss = loss_function(tag_scores, labels.float())
+            
+            train_loss.backward()
+            optimizer.step()
+            train_losses.append(float(train_loss))
+
         model.eval()
-        val_losses = []
         with torch.no_grad():
-            for inputs, labels in val_loader:
+            for i, data in enumerate(val_loader, 0):
+                inputs, labels = data
                 inputs, labels = inputs.to(device), labels.to(device)
                 labels = labels.long()
-                predictions = model(inputs)
-                loss = loss_function(predictions, labels.float())
-                val_losses.append(loss.item())
+                model.zero_grad()
+                tag_scores = model(inputs)
+                val_loss = loss_function(tag_scores, labels.float())
+                val_losses.append(float(val_loss))
 
-        print(f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {np.mean(train_losses):.4f}, Val Loss: {np.mean(val_losses):.4f}")
+        avg_train_loss = np.mean(train_losses)
+        history['loss'].append(avg_train_loss)
+        print("Epoch {} / {}: train_Loss = {:.3f}".format(epoch+1, num_epochs, avg_train_loss))
 
-    return model
+        avg_val_loss = np.mean(val_losses)
+        history['loss'].append(avg_val_loss)
+        print("Epoch {} / {}: val_Loss = {:.3f}".format(epoch+1, num_epochs, avg_val_loss))
+
+    return history, model
 
 
 if __name__ == "__main__":

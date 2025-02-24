@@ -9,8 +9,7 @@ __pycache__/
 
 *.json
 *.pickle
-pretrained_model/
-fine_tuned_model/
+model/
 outputs/
 
 # Distribution / packaging
