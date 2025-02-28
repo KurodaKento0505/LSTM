@@ -20,7 +20,7 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-    model_path = args.model
+    model_name = args.model
     output_file = args.output_file
     make_graph = args.make_graph
 
@@ -37,7 +37,7 @@ def main():
 
     # 学習済みモデルのロード
     model = LSTMClassification(input_dim=input_dim, hidden_dim=hidden_dim, target_size=target_size)
-    model.load_state_dict(torch.load(model_path), strict=False)
+    model.load_state_dict(torch.load(f"model/{model_name}_model/fine_tuning_best_params.pth", map_location=device), strict=False)
 
     if make_graph:
         sequence_np, label_np = googledrive_download(make_graph=make_graph, bepro=True)

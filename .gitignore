@@ -10,7 +10,7 @@ __pycache__/
 *.json
 *.pickle
 model/
-outputs/
+output/
 
 # Distribution / packaging
 .Python
