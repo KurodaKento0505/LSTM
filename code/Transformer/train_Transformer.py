@@ -5,6 +5,10 @@ import time
 import numpy as np
 
 from Transformer_kuroda import TransformerClassification
+
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from get_dataset import googledrive_download, init_dataset
 
 # GPUチェック
@@ -32,8 +36,6 @@ def main():
     # numpy load
     sequence_np, label_np = googledrive_download() # _0_or_1, 
     print(sequence_np.shape, label_np.shape)
-
-    label_np = label_np # [:, 1:]
 
     train_loader, val_loader, test_loader = init_dataset(sequence_np, label_np, batch_size)
 

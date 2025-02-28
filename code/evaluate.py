@@ -12,7 +12,7 @@ print(device)
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fine_tuned_model')
+    parser.add_argument('--model')
     parser.add_argument('--output_file')
     parser.add_argument('--make_graph', action='store_true')
     return parser.parse_args()
@@ -20,7 +20,7 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-    fine_tuned_model_path = args.fine_tuned_model
+    model_path = args.model
     output_file = args.output_file
     make_graph = args.make_graph
 
@@ -37,7 +37,7 @@ def main():
 
     # 学習済みモデルのロード
     model = LSTMClassification(input_dim=input_dim, hidden_dim=hidden_dim, target_size=target_size)
-    model.load_state_dict(torch.load(fine_tuned_model_path), strict=False)
+    model.load_state_dict(torch.load(model_path), strict=False)
 
     if make_graph:
         sequence_np, label_np = googledrive_download(make_graph=make_graph, bepro=True)
@@ -88,22 +88,20 @@ def evaluate(model, loader):
             for j in range(len(labels_i)):
                 labels_list.append(labels_i_list[j])
 
-            # total += labels_i.size(0)
-
-        # percent_calculate(outputs_list, labels_list, len(loader), test, number_of_tactical_action, make_graph, val)
-    # accuracy = correct / total
-    # return accuracy
     return outputs_list, labels_list
 
 
 # modelの評価
 def get_error(outputs_np, labels_np, tactical_action_name_list, half=1):
-
     # test_dataによる精度評価
     # 各列の誤差を計算
     errors_np = np.abs(outputs_np - labels_np)  # 絶対誤差
     mean_errors = np.mean(errors_np, axis=0)    # 各列の平均誤差
     std_errors = np.std(errors_np, axis=0)      # 各列の誤差の標準偏差
+    
+    # 全体の誤差を計算
+    overall_mean_error = np.mean(errors_np)  # 全体の平均誤差
+    overall_std_error = np.std(errors_np)    # 全体の誤差の標準偏差
 
     # 結果を出力
     # データフレームを作成
@@ -113,7 +111,15 @@ def get_error(outputs_np, labels_np, tactical_action_name_list, half=1):
         "Standard Deviation of Error": std_errors
     }
     error_df = pd.DataFrame(data)
-    return error_df
+    
+    # 全体の誤差を出力
+    overall_error_data = pd.DataFrame({
+        "Tactical Action": ["Overall"],
+        "Mean Error": [overall_mean_error],
+        "Standard Deviation of Error": [overall_std_error]
+    })
+    
+    return pd.concat([error_df, overall_error_data], ignore_index=True)
 
 
 def generate_sequence_result(outputs_np, labels_np, tactical_action_name_list, half=1):
@@ -123,9 +129,6 @@ def generate_sequence_result(outputs_np, labels_np, tactical_action_name_list, h
 
     slice_len = len(labels_np) % len(outputs_np)
     labels_np = np.delete(labels_np, slice(len(labels_np) - slice_len, len(labels_np)), 0)
-
-    # 結果を入れる列を作成
-    sequence_outcome_df['time_seconds'] = labels_np[:, 0]
 
     for j in range(len(tactical_action_name_list)):
         sequence_outcome_df[tactical_action_name_list[j]] = labels_np[:, j]

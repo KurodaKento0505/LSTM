@@ -14,6 +14,10 @@ from datetime import datetime
 import argparse
 
 from LSTM_kuroda import LSTMClassification
+
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from get_dataset import googledrive_download, init_dataset
 
 # GPUチェック
@@ -61,7 +65,7 @@ def main():
     torch.save(model.state_dict(), pretrained_model_path)
 
 
-def train(train_loader, val_loader, test_loader, model, num_epochs, lr):
+def train(train_loader, val_loader, test_loader, model, num_epochs, lr, mode='pretrain'):
     
     model = model.to(device)
     loss_function = nn.HuberLoss() # SmoothL1, CrossEntropyLoss, HuberLoss
